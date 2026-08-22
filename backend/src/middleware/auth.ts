@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '@/lib/prisma';
-import { JWTPayload } from '@/types';
+import { prisma } from '../lib/prisma';
+import { JWTPayload } from '../types';
 
 export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;

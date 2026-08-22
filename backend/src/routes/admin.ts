@@ -1,8 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { GameService } from '@/services/gameService';
-import { PaymentService } from '@/services/paymentService';
-import { requireAdmin } from '@/middleware/auth';
-import { prisma } from '@/lib/prisma';
+import { GameService } from '../services/gameService';
+import { PaymentService } from '../services/paymentService';
+import { requireAdmin } from '../middleware/auth';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
 

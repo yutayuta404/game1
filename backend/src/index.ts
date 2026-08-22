@@ -4,7 +4,7 @@ import cors from 'cors';
 import authRoutes from './routes/auth';
 import gameRoutes from './routes/game';
 import adminRoutes from './routes/admin';
-import { prisma } from '@/lib/prisma';
+import { prisma } from './lib/prisma';
 
 const app = express();
 const PORT = process.env.PORT || 3001;

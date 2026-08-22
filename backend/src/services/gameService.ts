@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { RoundStatus, WinnerSide, Selection, TransactionType } from '@/types';
-import { SettleResult, RoundState, BetRequest } from '@/types';
+import { prisma } from '../lib/prisma';
+import { RoundStatus, WinnerSide, Selection, TransactionType } from '../types';
+import { SettleResult, RoundState, BetRequest } from '../types';
 
 const ROUND_DURATION = 30; // 30 seconds for local testing
 const HOUSE_FEE_RATE = 0.10; // 10%
