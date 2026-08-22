@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  TOPUP
+  BET
+  WIN
+  REFUND
+  WITHDRAW
+}
+
+enum RoundStatus {
+  ACTIVE
+  SETTLED
+  CANCELLED
+}
+
+enum WinnerSide {
+  MESSI
+  RONALDO
+}
+
+enum Selection {
+  MESSI
+  RONALDO
+}
+
+enum PaymentType {
+  TOPUP
+  WITHDRAW
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  username            String   @unique
+  balance             Float    @default(100)
+  withdrawableBalance Float    @default(0)
+  createdAt           DateTime @default(now())
+  bets                Bet[]
+  transactions        LedgerTransaction[]
+  payments            PaymentRequest[]
+}
+
+model LedgerTransaction {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  amount      Float
+  type        TransactionType
+  referenceId String?
+  createdAt   DateTime         @default(now())
+
+  @@index([userId])
+  @@index([referenceId])
+}
+
+model Round {
+  id                 String      @id @default(uuid())
+  startTimestamp     Int         // Unix timestamp in seconds
+  endTimestamp       Int         // Unix timestamp in seconds
+  status             RoundStatus @default(ACTIVE)
+  totalMessi         Float       @default(0)
+  totalRonaldo       Float       @default(0)
+  winner             WinnerSide?
+  jackpotHit         Boolean     @default(false)
+  jackpotWonAmount   Float       @default(0)
+  createdAt          DateTime    @default(now())
+  bets               Bet[]
+}
+
+model Bet {
+  id        String     @id @default(uuid())
+  roundId   String
+  round     Round      @relation(fields: [roundId], references: [id])
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  selection Selection
+  amount    Float
+  claimed   Boolean    @default(false)
+  createdAt DateTime   @default(now())
+
+  @@index([roundId])
+  @@index([userId])
+}
+
+model GlobalVault {
+  id                   String @id @default("singleton")
+  houseFeeBalance      Float  @default(0)
+  jackpotVaultBalance  Float  @default(0)
+}
+
+model PaymentRequest {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  type          PaymentType
+  packageLabel  String?
+  coins         Float
+  platform      String
+  txnRef        String?
+  screenshot    String?
+  accountNumber String?
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  reviewedAt    DateTime?
+}

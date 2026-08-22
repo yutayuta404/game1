@@ -1,0 +1,14 @@
+.vercel
+.env*
+node_modules/
+dist/
+.DS_Store
+*.log
+clash-ball-drop.zip
+clash-ball-drop/
+.agents/
+.claude/
+.windsurf/
+cursor/
+**/src/generated/
+**/prisma/generated/
