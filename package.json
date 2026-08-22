@@ -1,0 +1,9 @@
+{
+  "name": "game1",
+  "private": true,
+  "scripts": {
+    "build": "cd backend && npm install && npm run build",
+    "start": "node backend/dist/index.js",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install"
+  }
+}
