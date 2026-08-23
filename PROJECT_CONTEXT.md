@@ -363,6 +363,15 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - Frontend auto-login prefers `getInitData()` verified path; falls back to legacy username login only if initData absent
 - Tampered-signature rejection verified via curl
 
+### Real-data pass (2026-08-23)
+- **Chat is real**: new `ChatMessage` Prisma model + `GET|POST /api/game/chat` (140-char limit, 1.5s/user rate limit); ChatTab polls every 4s, optimistic send, "N chatting" = distinct usernames
+- **Live Bets card real**: `GET /api/game/recent-bets` (last 20 across users) polled every 5s; own bets flagged `isUser`
+- **History ribbon real**: `GET /api/game/history` (last 10 SETTLED rounds, 15s poll) — empty until rounds settle server-side
+- Removed ALL mocks: CHAT_SEED, RANDOM_USERS sim-bets/chatter/whale alerts, INITIAL_HISTORY, fake "142 online"
+- Removed Demo Drop button + `handleManualTriggerDrop`; removed "Matter.js 2D Physics" badge from canvas
+- NOTE: backend rounds still never settle automatically (`POST /settle` exists but uncalled) → history stays [] and expired rounds pile up until something calls settle
+- **Ball logo**: header Flame → `BallMark` SVG (white disc, pentagon+seams knocked out via mask); assets: `public/logo-ball.svg`, `logo-ball.png` (1024), `logo-512.png`, `logo-192.png`, `apple-touch-icon.png`, favicon.svg now ball-on-gradient tile
+
 ### Current Configuration
 - **Frontend port**: 5173 (dev server usually started with `--force`)
 - **Round duration**: 30 seconds (backend `ROUND_DURATION`; frontend resets `setTimeLeft(30)`)
