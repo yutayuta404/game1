@@ -351,6 +351,12 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - API URL baked at build time via `frontend/.env.production` (`VITE_API_URL=https://backend-production-5be2b.up.railway.app/api`) — note `.env*` is gitignored, so this file exists only locally; CLI deploys include it. Old project `game1` (game1-tawny-gamma.vercel.app) still live but stale branding.
 - Backend CORS verified for both vercel origins
 
+**Admin Panel → https://0xduel.vercel.app/admin.html**
+- Static page at `frontend/public/admin.html` (vanilla JS, no build step); secret gate stored in sessionStorage
+- Features: vault stats, user list w/ balances, CREDIT/DEBIT manual fund adjustment, payment-request approve/reject with receipt previews
+- Uses `x-admin-secret` header — CORS `allowedHeaders` updated in `backend/src/index.ts`
+- ADMIN_SECRET was rotated 2026-08-23 (old value unknown to this session) — owner has the new value
+
 **Telegram Mini App → @zeroxduel_bot**
 - Bot name "0XDUEL", description set; Menu Button = web_app "PLAY 0XDUEL" → https://0xduel.vercel.app (configured via Bot API `setChatMenuButton`)
 - **Verified server-side login**: `POST /api/auth/telegram {initData}` verifies Telegram HMAC-SHA256 signature (`backend/src/lib/telegram.ts`, secret = HMAC("WebAppData", botToken), 24h auth_date window) → finds/creates user by username or `tg_<id>` → returns JWT
