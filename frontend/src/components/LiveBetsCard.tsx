@@ -1,5 +1,6 @@
 import { Activity, ArrowUpRight } from 'lucide-react';
 import type { BetItem } from '../types/clash';
+import { useLang } from '../i18n';
 
 interface LiveBetsCardProps {
   bets: BetItem[];
@@ -7,6 +8,7 @@ interface LiveBetsCardProps {
 }
 
 export const LiveBetsCard: React.FC<LiveBetsCardProps> = ({ bets, max = 6 }) => {
+  const { t } = useLang();
   const recent = bets.slice(0, max);
 
   return (
@@ -15,11 +17,11 @@ export const LiveBetsCard: React.FC<LiveBetsCardProps> = ({ bets, max = 6 }) => 
       <div className="px-3 py-2.5 flex items-center justify-between border-b border-[#30363D]/70 bg-white/[0.03]">
         <div className="flex items-center gap-1.5">
           <Activity className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="text-xs font-bold text-gray-200 tracking-tight">Live Bets</span>
+          <span className="text-xs font-bold text-gray-200 tracking-tight">{t('liveBets')}</span>
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
         </div>
         <span className="text-[10px] font-mono text-gray-400">
-          {bets.length} bet{bets.length === 1 ? '' : 's'} this round
+          {bets.length === 1 ? t('betThisRound', { n: bets.length }) : t('betsThisRound', { n: bets.length })}
         </span>
       </div>
 
@@ -27,7 +29,7 @@ export const LiveBetsCard: React.FC<LiveBetsCardProps> = ({ bets, max = 6 }) => 
       <div className="divide-y divide-[#30363D]/40 max-h-64 overflow-y-auto no-scrollbar">
         {recent.length === 0 ? (
           <p className="text-center text-[11px] text-gray-500 py-6 font-mono">
-            No bets yet — be the first.
+            {t('noBetsYet')}.
           </p>
         ) : (
           recent.map((bet) => {
@@ -48,7 +50,7 @@ export const LiveBetsCard: React.FC<LiveBetsCardProps> = ({ bets, max = 6 }) => 
                       bet.isUser ? 'text-amber-400 font-bold' : 'text-gray-200'
                     }`}
                   >
-                    {bet.isUser ? 'You' : bet.user}
+                    {bet.isUser ? t('you') : bet.user}
                   </span>
                 </div>
 

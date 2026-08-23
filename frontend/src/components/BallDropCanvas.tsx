@@ -3,6 +3,7 @@ import Matter from 'matter-js';
 import confetti from 'canvas-confetti';
 import type { TeamSide } from '../types/clash';
 import { sound } from '../utils/audio';
+import { useLang } from '../i18n';
 
 interface BallDropCanvasProps {
   phase: 'betting' | 'dropping' | 'finished';
@@ -26,6 +27,7 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
   forcedWinner,
   onBallLanded,
 }) => {
+  const { t } = useLang();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<Matter.Engine | null>(null);
@@ -42,6 +44,9 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
   phaseRef.current = phase;
   const forcedWinnerRef = useRef<TeamSide | null>(forcedWinner ?? null);
   forcedWinnerRef.current = forcedWinner ?? null;
+  // Keep latest translations reachable inside the one-time render loop
+  const tRef = useRef(t);
+  tRef.current = t;
 
   // Setup Matter.js world + ONE unified render loop (runs once on mount)
   useLayoutEffect(() => {
@@ -293,7 +298,7 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       ctx.textAlign = 'center';
       ctx.fillText(
         phaseRef.current === 'dropping'
-          ? (forcedWinnerRef.current ? 'DROP!' : 'SETTLING')
+          ? (forcedWinnerRef.current ? tRef.current('dropBang') : tRef.current('settling'))
           : '0XDUEL',
         width / 2,
         13

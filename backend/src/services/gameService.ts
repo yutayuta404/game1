@@ -99,10 +99,18 @@ export class GameService {
       // actual payouts/refunds at settlement, never from stakes placed.
       const newBalance = user.balance - betData.amount;
 
+      // Signup-bonus accounting: non-bonus funds are spent FIRST, bonus LAST.
+      // The portion of the stake funded by the locked signup bonus is recorded
+      // on the bet so settlement can keep any winnings from it locked forever.
+      const realSpent = Math.max(0, Math.min(betData.amount, user.balance - user.bonusLocked));
+      const bonusSpent = betData.amount - realSpent;
+      const newBonusLocked = user.bonusLocked - bonusSpent;
+
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data: {
-          balance: newBalance
+          balance: newBalance,
+          bonusLocked: newBonusLocked
         }
       });
 
@@ -112,7 +120,8 @@ export class GameService {
           roundId: round.id,
           userId,
           selection: betData.selection,
-          amount: betData.amount
+          amount: betData.amount,
+          bonusFunded: bonusSpent
         }
       });
 
@@ -229,13 +238,19 @@ export class GameService {
     await prisma.$transaction(async (tx) => {
       for (const bet of winningBets) {
         const payout = (bet.amount / winningSideTotal) * totalWinningPool;
-        
+
+        // Signup-bonus stakes can never produce withdrawable money:
+        // the bonus-funded fraction of the payout stays locked forever.
+        const bonusShare = bet.amount > 0 ? (bet.bonusFunded || 0) / bet.amount : 0;
+        const lockedPayout = Math.min(payout, payout * bonusShare);
+
         // Credit user balance
         await tx.user.update({
           where: { id: bet.userId },
           data: {
             balance: { increment: payout },
-            withdrawableBalance: { increment: payout }
+            withdrawableBalance: { increment: payout - lockedPayout },
+            bonusLocked: { increment: lockedPayout }
           }
         });
 
@@ -333,12 +348,15 @@ export class GameService {
 
     await prisma.$transaction(async (tx) => {
       for (const bet of bets) {
-        // Refund full bet amount (restores unlock status)
+        // Refund full bet amount — the signup-bonus funded portion is restored
+        // as locked (never withdrawable), the rest as withdrawable.
+        const bonusPart = Math.min(bet.amount, bet.bonusFunded || 0);
         await tx.user.update({
           where: { id: bet.userId },
           data: {
             balance: { increment: bet.amount },
-            withdrawableBalance: { increment: bet.amount }
+            withdrawableBalance: { increment: bet.amount - bonusPart },
+            bonusLocked: { increment: bonusPart }
           }
         });
 

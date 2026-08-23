@@ -1,5 +1,6 @@
 import { Trophy, TrendingUp, Sparkles, X, Coins, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import type { TeamSide } from '../types/clash';
+import { useLang } from '../i18n';
 import messiCutout from '../assets/messi-cutout.png';
 import ronaldoCutout from '../assets/ronaldo-cutout.png';
 
@@ -24,10 +25,11 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
 }) => {
   const isMessi = winner === 'messi';
   const isUserWinner = userWinnings !== null && userWinnings > 0;
+  const { t } = useLang();
 
   const playerCutout = isMessi ? messiCutout : ronaldoCutout;
   const playerName = isMessi ? 'Lionel Messi' : 'Cristiano Ronaldo';
-  const teamLabel = isMessi ? 'TEAM MESSI' : 'TEAM RONALDO';
+  const teamLabel = isMessi ? t('teamMessi') : t('teamRonaldo');
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -62,7 +64,7 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
         <div className="flex items-center justify-center gap-1.5 mb-3">
           <Trophy className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-widest">
-            Round #{roundId} Settlement
+            {t('settlementTitle', { n: roundId })}
           </span>
         </div>
 
@@ -101,14 +103,13 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
                 : 'bg-red-600 border-red-300 text-white'
             }`}
           >
-            WINNER
-          </div>
-        </div>
+            {t('winnerBadge')}
+          </div>        </div>
 
         {/* Winner Title */}
         <div className="mt-4 mb-3">
           <h2 className="text-xl font-black text-white tracking-tight">
-            {teamLabel} VICTORIOUS
+            {teamLabel} {t('victorious')}
           </h2>
           <p className="text-xs text-gray-400 font-mono mt-0.5">
             {playerName}
@@ -120,7 +121,7 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
           <div className="flex items-center justify-between py-1 text-xs">
             <span className="text-gray-400 font-mono flex items-center gap-1">
               <Coins className="w-3.5 h-3.5 text-amber-400" />
-              Total Winning Pool
+              {t('totalWinningPool')}
             </span>
             <span className="font-mono font-bold text-white">
               ${(winningPool || totalPool).toLocaleString()}
@@ -130,7 +131,7 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
           <div className="flex items-center justify-between py-1 text-xs">
             <span className="text-gray-400 font-mono flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
-              Payout Multiplier
+              {t('payoutMultiplier')}
             </span>
             <span className="font-mono font-bold text-amber-400">
               {multiplier.toFixed(2)}x
@@ -140,7 +141,7 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
           <div className="flex items-center justify-between py-1 text-xs">
             <span className="text-gray-400 font-mono flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Your Settlement
+              {t('yourSettlement')}
             </span>
             {userWinnings !== null && userWinnings > 0 ? (
               <span className="font-mono font-bold text-emerald-400 flex items-center gap-0.5">
@@ -153,7 +154,7 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
               </span>
             ) : (
               <span className="font-mono text-gray-500">
-                No Bet
+                {t('noBet')}
               </span>
             )}
           </div>
@@ -172,12 +173,12 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
               <div className="space-y-0.5">
                 <div className="flex items-center justify-center gap-1 font-bold text-xs text-emerald-300">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>PAYOUT CREDITED: +${userWinnings.toFixed(2)}</span>
+                  <span>{t('payoutCredited')} +${userWinnings.toFixed(2)}</span>
                 </div>
-                <p className="text-[10px] text-emerald-400/80">Added directly to your balance</p>
+                <p className="text-[10px] text-emerald-400/80">{t('addedToBalance')}</p>
               </div>
             ) : (
-              <div className="text-[11px]">Round bets settled. Ready for next drop.</div>
+              <div className="text-[11px]">{t('settledReadyNext')}</div>
             )}
           </div>
         )}
@@ -186,7 +187,7 @@ export const RoundResultModal: React.FC<RoundResultModalProps> = ({
           onClick={onClose}
           className="mt-3.5 w-full py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-xs rounded-xl shadow-md active:scale-95 transition-all cursor-pointer uppercase tracking-wider"
         >
-          Next Round (30s)
+          {t('nextRound')}
         </button>
       </div>
     </div>

@@ -52,6 +52,11 @@ model User {
   username            String   @unique
   balance             Float    @default(100)
   withdrawableBalance Float    @default(0)
+  // Portion of balance that originated from the signup bonus.
+  // Never becomes withdrawable — only deposits/winnings-from-deposits do.
+  bonusLocked         Float    @default(0)
+  // House-run simulated player (activity/liquidity seeding). Never a real depositor.
+  isBot               Boolean  @default(false)
   createdAt           DateTime @default(now())
   bets                Bet[]
   transactions        LedgerTransaction[]
@@ -117,6 +122,8 @@ model Bet {
   user      User       @relation(fields: [userId], references: [id])
   selection Selection
   amount    Float
+  // Portion of the stake paid from the locked signup bonus (spent last).
+  bonusFunded Float    @default(0)
   claimed   Boolean    @default(false)
   createdAt DateTime   @default(now())
 

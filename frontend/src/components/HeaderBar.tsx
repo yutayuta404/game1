@@ -1,6 +1,7 @@
 import React from 'react';
 import { Coins, Plus, Volume2, VolumeX } from 'lucide-react';
 import { sound } from '../utils/audio';
+import { useLang } from '../i18n';
 
 export const BallMark: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 1024 1024" className={className} aria-hidden="true">
@@ -36,6 +37,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   soundEnabled,
   onToggleSound,
 }) => {
+  const { t } = useLang();
   return (
     <>
     <header className="w-full bg-[#161B22]/95 backdrop-blur-md border-b border-[#30363D] px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 select-none">
@@ -51,7 +53,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </span>
           </div>
           <span className="text-[10px] font-mono text-gray-400 block mt-0.5">
-            Round #{roundId}
+            {t('roundNo', { n: roundId })}
           </span>
         </div>
       </div>
@@ -62,7 +64,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
       <div className="flex items-center gap-1.5">
         <button
           onClick={onToggleSound}
-          title={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+          title={soundEnabled ? t('muteSound') : t('unmuteSound')}
           className="p-1.5 rounded-md text-gray-400 hover:text-white bg-[#0D1117] border border-[#30363D] active:scale-95 transition-transform"
         >
           {soundEnabled ? (
@@ -89,7 +91,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           className="flex items-center gap-0.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-[11px] px-2 py-1 rounded-lg shadow-sm shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
         >
           <Plus className="w-3 h-3 stroke-[3]" />
-          <span>Top Up</span>
+          <span>{t('topUp')}</span>
         </button>
       </div>
     </header>

@@ -98,6 +98,7 @@ model User {
   username            String   @unique
   balance             Float    @default(100)   // total spendable
   withdrawableBalance Float    @default(0)     // unlocked by wagering (added this session)
+  bonusLocked         Float    @default(0)     // signup-bonus portion of balance — NEVER withdrawable (2026-08-23)
   createdAt           DateTime @default(now())
   bets                Bet[]
   transactions        LedgerTransaction[]
@@ -125,6 +126,7 @@ model Bet {
   user      User       @relation(fields: [userId], references: [id])
   selection Selection
   amount    Float
+  bonusFunded Float    @default(0)   // stake portion paid from locked signup bonus (2026-08-23)
   claimed   Boolean    @default(false)
   createdAt DateTime   @default(now())
   @@index([roundId])
@@ -510,6 +512,23 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - Verified contested round end-to-end: WIN +35.60 credited, audits + history populated
 
 ## 10. Next Session — start here
+
+### Signup bonus locking (2026-08-23)
+- **$100 signup bonus can NEVER be withdrawn**: new users created with `balance:100, bonusLocked:100` (both auth routes). Invariant: `withdrawableBalance ≤ balance − bonusLocked`
+- `Bet.bonusFunded` records how much of a stake came from the bonus. Bets spend NON-bonus funds first, bonus last (depositors never penalized)
+- Settlement WIN: payout × (bonusFunded/amount) stays locked (`bonusLocked += lockedPayout`, withdrawable gets the rest)
+- Uncontested REFUND: bonus-funded portion restored as locked; deposit-funded portion as withdrawable
+- Verified end-to-end locally: fresh user 100/0/100 → uncontested refund keeps 0 withdrawable → pure-bonus WIN pays 178 fully locked (withdrawable stays 0); deposit-funded bet has bonusFunded=0
+- i18n added same session: EN + Burmese (`frontend/src/i18n/`), language picker in ProfileTab, localStorage `oxduel_lang`, Noto Sans Myanmar font in index.html. Bet buttons (BET MESSI/BET RONALDO), numbers and 0XDUEL brand stay English
+
+### House bots (2026-08-23)
+- **Server-side simulated players** (`backend/src/services/botService.ts`, ticked every 3s from `index.ts`) — bets flow through the REAL `GameService.placeBet()` so pools/vault/fees/live-bets/settlement all stay consistent. Kill switch: `BOTS_ENABLED=false` env var
+- 10 persistent bot users (`isBot: true`, roster in `BOT_USERNAMES`: ko_sok88, mm_gamer01, aunglay_2k…), created lazily with 500k balance; auto-refill +500k via TOPUP ledger `referenceId:'bot_refill'` when below stake+5k (bots bleed ~11%/round to fees)
+- Per active round: 1–4 bots (hard cap 4), each bets once at random 5–45s after round start (never inside final 3s); stake = clean hundreds only: 100 × randInt(10..20) → 1000–2000; ~60% pick the smaller side (UNDERDOG_BIAS) to keep multipliers near ~1.78×
+- Guards: one schedule per round per process (`scheduledRounds` Set), re-check round ACTIVE at fire time, skip if bot bet already exists for round (restart-safe), winner is still random 50/50 post-close so bots can never know outcomes
+- Admin panel: purple BOT badge next to bot usernames in Users list, Live Activity feed, and Inspect modal (`isBot` field on User schema)
+- Verified locally: bots bet every round (clean amounts, ≤4/round), settlements pay them normally (e.g. kyaw_golfer 1700 → WIN payout 4539)
+
 
 **Verify health (30s):**
 ```bash

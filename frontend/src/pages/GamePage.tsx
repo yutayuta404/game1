@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { TabType, TeamSide, RoundHistoryItem, BetItem, ChatMessage } from '../types/clash';
 import { HeaderBar } from '../components/HeaderBar';
 import { CountdownTimer } from '../components/CountdownTimer';
@@ -17,20 +17,24 @@ import { sound } from '../utils/audio';
 import { useAuth } from '../hooks/useAuth';
 import { getInitData, getTelegramUsername, hapticSuccess, hapticWarning } from '../utils/telegram';
 import { api } from '../services/api';
+import { useLang } from '../i18n';
 
 // Matches backend NET_POOL_RATE (89%) so displayed multipliers equal real payouts
 const NET_POOL_RATE_UI = 0.89;
 
-// Local system notice shown atop the real chat feed
-const WELCOME_MESSAGE: ChatMessage = {
-  id: 'welcome',
-  type: 'system',
-  text: 'Welcome to 0XDUEL! Pick your side: Team Messi vs Team Ronaldo. 30s per round!',
-  timestamp: Date.now(),
-};
-
 export default function GamePage() {
   const { user, loading: authLoading, login, loginTelegram, logout, updateBalance, refresh: refreshAuth } = useAuth();
+  const { t } = useLang();
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  // Local system notice shown atop the real chat feed (re-created per language)
+  const WELCOME_MESSAGE: ChatMessage = useMemo(() => ({
+    id: 'welcome',
+    type: 'system',
+    text: t('welcomeMessage'),
+    timestamp: Date.now(),
+  }), [t]);
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<TabType>('game');
@@ -62,6 +66,8 @@ export default function GamePage() {
 
   // Chat Feed State (real messages, polled from backend)
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const welcomeRef = useRef(WELCOME_MESSAGE);
+  welcomeRef.current = WELCOME_MESSAGE;
   const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
 
   // History Ribbon State (real settled rounds, polled from backend)
@@ -153,7 +159,7 @@ export default function GamePage() {
     const newBet: BetItem = {
       id: `user-bet-${Date.now()}`,
       roundId,
-      user: 'You',
+      user: t('you'),
       avatar: 'ME',
       side,
       amount,
@@ -193,7 +199,7 @@ export default function GamePage() {
         const whaleNotice: ChatMessage = {
           id: `whale-${Date.now()}`,
           type: 'whale',
-          text: `High Roller: You placed $${amount} on ${side === 'messi' ? 'Team Messi' : 'Team Ronaldo'}!`,
+          text: t('highRollerMsg', { n: amount, side: side === 'messi' ? 'Team Messi' : 'Team Ronaldo' }),
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, whaleNotice]);
@@ -208,8 +214,8 @@ export default function GamePage() {
       setActiveBets((prev) => prev.filter((b) => b.id !== newBet.id));
       setUserCurrentBet(prevBalanceEntry.userCurrentBet);
       hapticWarning();
-      const msg = err instanceof Error ? err.message : 'Bet failed';
-      setBetError(msg.startsWith('Session expired') ? msg : `Bet not placed: ${msg}`);
+      const msg = err instanceof Error ? err.message : t('betFailed');
+      setBetError(msg.startsWith('Session expired') ? msg : t('betNotPlaced', { msg }));
       setTimeout(() => setBetError(null), 5000);
     }
   };
@@ -290,7 +296,7 @@ export default function GamePage() {
           timestamp: new Date(r.createdAt).getTime(),
           isUser: r.userId === user.id,
         }));
-        setMessages([WELCOME_MESSAGE, ...mapped]);
+        setMessages([welcomeRef.current, ...mapped]);
         if (activeTabRef.current !== 'chat' && mapped.length > chatCountRef.current) {
           setUnreadChatCount((c) => Math.min(99, c + (mapped.length - chatCountRef.current)));
         }
@@ -470,7 +476,11 @@ export default function GamePage() {
     setMessages((prev) => [...prev, {
       id: `result-${Date.now()}`,
       type: 'system',
-      text: `Round settled: ${winner === 'messi' ? 'Team Messi' : 'Team Ronaldo'} won! ${winningMultiplier.toFixed(2)}x ($${total.toLocaleString()} pool).`,
+      text: tRef.current('roundSettledMsg', {
+        side: winner === 'messi' ? 'Team Messi' : 'Team Ronaldo',
+        mult: winningMultiplier.toFixed(2),
+        total: total.toLocaleString(),
+      }),
       timestamp: Date.now(),
     }]);
 
@@ -522,12 +532,12 @@ export default function GamePage() {
               <span className="text-2xl">⚽</span>
             </div>
             <h1 className="text-2xl font-extrabold text-white mb-1">0X<span className="text-amber-400">DUEL</span></h1>
-            <p className="text-gray-400 text-sm">Messi vs Ronaldo — 30s Prediction Duels</p>
+            <p className="text-gray-400 text-sm">{t('loginTagline')}</p>
           </div>
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="Enter username..."
+              placeholder={t('enterUsername')}
               value={loginUsername}
               onChange={(e) => setLoginUsername(e.target.value)}
               className="w-full px-4 py-3 bg-[#161B22] border border-[#30363D] rounded-xl text-white focus:outline-none focus:border-amber-400"
@@ -544,7 +554,7 @@ export default function GamePage() {
               disabled={authLoading || !loginUsername.trim()}
               className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-sm rounded-xl shadow-md active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {authLoading ? 'Logging in...' : 'Start Playing'}
+              {authLoading ? t('loggingIn') : t('startPlaying')}
             </button>
           </div>
         </div>

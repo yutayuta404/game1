@@ -3,6 +3,7 @@ import { DollarSign, CheckCircle2, AlertCircle, X, Repeat, Zap } from 'lucide-re
 import type { TeamSide } from '../types/clash';
 import { sound } from '../utils/audio';
 import { hapticLight, hapticSuccess, hapticWarning } from '../utils/telegram';
+import { useLang } from '../i18n';
 import messiCutout from '../assets/messi-cutout.png';
 import ronaldoCutout from '../assets/ronaldo-cutout.png';
 
@@ -35,6 +36,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   const [autoOpen, setAutoOpen] = useState<boolean>(false);
   const [autoSide, setAutoSide] = useState<TeamSide>('messi');
   const [autoRounds, setAutoRounds] = useState<string>('10');
+  const { t } = useLang();
 
   const totalPool = messiPool + ronaldoPool;
   const messiMultiplier = messiPool > 0 ? (totalPool * 0.89) / messiPool : null;
@@ -94,14 +96,15 @@ export const BettingPad: React.FC<BettingPadProps> = ({
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              Locked Bet: <strong className="text-white">${userCurrentBet.amount}</strong> on{' '}
+              {t('lockedBet')} <strong className="text-white">${userCurrentBet.amount}</strong>{' '}
               <strong className={userCurrentBet.side === 'messi' ? 'text-blue-400' : 'text-red-400'}>
                 {userCurrentBet.side === 'messi' ? 'Messi' : 'Ronaldo'}
-              </strong>
+              </strong>{' '}
+              {t('onSide')}
             </span>
           </div>
           <span className="text-amber-400 font-bold">
-            Est. +${userCurrentBet.estPayout.toFixed(2)}
+            {t('est')} +${userCurrentBet.estPayout.toFixed(2)}
           </span>
         </div>
       )}
@@ -119,7 +122,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
             value={customInput}
             onChange={handleCustomChange}
             disabled={phase !== 'betting'}
-            placeholder="Amount"
+            placeholder={t('amountPlaceholder')}
             className="w-full pl-7 pr-3 py-1.5 bg-[#0D1117] border border-[#30363D] rounded-lg text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-400 disabled:opacity-50"
           />
         </div>
@@ -175,7 +178,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
               AUTO <strong className={autoBet.side === 'messi' ? 'text-blue-400' : 'text-red-400'}>
                 {autoBet.side === 'messi' ? 'MESSI' : 'RONALDO'}
               </strong>{' '}
-              ${autoBet.amount} × <strong className="text-white">{autoBet.remaining}</strong> left
+              ${autoBet.amount} × <strong className="text-white">{autoBet.remaining}</strong> {t('autoLeft', { n: autoBet.remaining })}
             </span>
           </div>
           <button
@@ -185,7 +188,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
             }}
             className="text-[10px] font-mono font-bold text-red-300 hover:text-red-200 border border-red-500/40 hover:border-red-400 px-2 py-0.5 rounded-md active:scale-95 transition-all cursor-pointer"
           >
-            CANCEL
+            {t('cancelBtn')}
           </button>
         </div>
       ) : (
@@ -198,7 +201,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
           className="w-full py-1.5 bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/40 text-violet-300 font-mono font-bold text-[11px] rounded-lg active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5"
         >
           <Repeat className="w-3 h-3" />
-          AUTO BET — up to 1440 prepaid rounds
+          {t('autoBetBtn')}
         </button>
       )}
 
@@ -302,7 +305,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
       {amount > balance && (
         <div className="flex items-center justify-center gap-1 text-[11px] text-red-400 font-medium">
           <AlertCircle className="w-3.5 h-3.5" />
-          <span>Insufficient balance. Tap + Top Up to deposit.</span>
+          <span>{t('insufficientTopUpHint')}</span>
         </div>
       )}
 
@@ -347,7 +350,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
               </div>
 
               <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">
-                Confirm your bet on
+                {t('confirmBetOn')}
               </p>
               <h2
                 className={`text-xl font-black tracking-tight ${
@@ -359,15 +362,15 @@ export const BettingPad: React.FC<BettingPadProps> = ({
 
               <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-2.5 divide-y divide-[#30363D]/60 text-left my-3 font-mono text-xs">
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-gray-400">Amount</span>
+                  <span className="text-gray-400">{t('amountPlaceholder')}</span>
                   <span className="font-bold text-white">${pendingBet.amount}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-gray-400">Payout multiplier</span>
+                  <span className="text-gray-400">{t('payoutMultiplier')}</span>
                   <span className="font-bold text-amber-400">{mult.toFixed(2)}x</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-gray-400">Potential win</span>
+                  <span className="text-gray-400">{t('potentialWin')}</span>
                   <span className="font-bold text-emerald-400">+${estWin.toFixed(2)}</span>
                 </div>
               </div>
@@ -378,7 +381,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
                   onClick={() => setPendingBet(null)}
                   className="py-2.5 bg-[#21262D] hover:bg-[#30363D] text-gray-300 font-extrabold text-xs rounded-xl active:scale-95 transition-all cursor-pointer"
                 >
-                  Cancel
+                  {t('cancelBtn')}
                 </button>
                 <button
                   onClick={() => {
@@ -397,7 +400,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
                     phase !== 'betting' ? 'opacity-40 cursor-not-allowed' : ''
                   }`}
                 >
-                  Confirm ${pendingBet.amount}
+                  {t('confirmN', { n: pendingBet.amount })}
                 </button>
               </div>
             </div>
@@ -423,11 +426,10 @@ export const BettingPad: React.FC<BettingPadProps> = ({
 
             <h3 className="font-extrabold text-sm text-white flex items-center gap-1.5">
               <Repeat className="w-4 h-4 text-violet-400" />
-              Auto Bet
+              {t('autoBetTitle')}
             </h3>
             <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed">
-              Prepay up to 1,440 rounds at ${amount} each. Bets repeat every round on your chosen side.
-              Cancel anytime — current round stays committed.
+              {t('autoBetDesc', { amt: amount })}
             </p>
 
             {/* Side picker */}
@@ -454,7 +456,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
 
             {/* Rounds input */}
             <label className="text-[10px] text-gray-400 font-mono block mt-3 mb-1">
-              Rounds (max 1440)
+              {t('roundsMax')}
             </label>
             <input
               type="number"
@@ -488,13 +490,13 @@ export const BettingPad: React.FC<BettingPadProps> = ({
             {/* Cost summary */}
             <div className="bg-[#0D1117] border border-[#30363D] rounded-xl p-2.5 mt-3 space-y-1 font-mono text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-400">Total prepaid</span>
+                <span className="text-gray-400">{t('totalPrepaid')}</span>
                 <span className={`font-bold ${autoCost > balance ? 'text-red-400' : 'text-amber-400'}`}>
                   ${autoCost.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Balance after</span>
+                <span className="text-gray-400">{t('balanceAfter')}</span>
                 <span className="font-bold text-gray-200">
                   ${(Math.max(0, balance - autoCost)).toLocaleString()}
                 </span>
@@ -512,10 +514,10 @@ export const BettingPad: React.FC<BettingPadProps> = ({
               className="mt-3.5 w-full py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-400 hover:from-violet-400 hover:to-fuchsia-300 text-black font-extrabold text-xs rounded-xl shadow-lg shadow-violet-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {autoCost > balance
-                ? 'Insufficient balance'
+                ? t('insufficientBalance')
                 : phase !== 'betting'
-                ? 'Round in progress'
-                : `Start Auto — $${autoCost.toLocaleString()}`}
+                ? t('roundInProgress')
+                : t('startAuto', { n: autoCost.toLocaleString() })}
             </button>
           </div>
         </div>

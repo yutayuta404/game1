@@ -6,6 +6,7 @@ import gameRoutes from './routes/game';
 import adminRoutes from './routes/admin';
 import { prisma } from './lib/prisma';
 import { GameService } from './services/gameService';
+import { BotService } from './services/botService';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,6 +52,16 @@ async function startServer() {
         await GameService.settleRound();
       } catch {
         /* nothing expired — expected most ticks */
+      }
+    }, 3000);
+
+    // Bot ticker: schedule simulated player bets once per active round
+    // (disable with BOTS_ENABLED=false)
+    setInterval(async () => {
+      try {
+        await BotService.tick();
+      } catch {
+        /* non-fatal */
       }
     }, 3000);
   } catch (error) {

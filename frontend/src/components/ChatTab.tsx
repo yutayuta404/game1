@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Trophy, Crown, MessageSquare, User, Zap } from 'lucide-react';
 import type { ChatMessage } from '../types/clash';
 import { sound } from '../utils/audio';
+import { useLang } from '../i18n';
 
 interface ChatTabProps {
   messages: ChatMessage[];
@@ -11,8 +12,12 @@ interface ChatTabProps {
 export const ChatTab: React.FC<ChatTabProps> = ({ messages, onSendMessage }) => {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { t } = useLang();
 
-  const quickPhrases = ['Messi GOAT!', 'CR7 Siuuu!', 'All In!', 'Next round bounce!', 'Big Win!'];
+  const quickPhrases = useMemo(
+    () => [t('quick1'), t('quick2'), t('quick3'), t('quick4'), t('quick5')],
+    [t]
+  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,11 +48,11 @@ export const ChatTab: React.FC<ChatTabProps> = ({ messages, onSendMessage }) => 
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
-            <span>Community Live Feed</span>
+            <span>{t('communityFeed')}</span>
           </span>
         </div>
         <span className="text-[11px] font-mono text-gray-400">
-          {new Set(messages.filter((m) => m.type === 'user').map((m) => m.user)).size} chatting
+          {t('chatting', { n: new Set(messages.filter((m) => m.type === 'user').map((m) => m.user)).size })}
         </span>
       </div>
 
@@ -72,7 +77,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ messages, onSendMessage }) => 
                   <div className="flex items-center justify-between">
                     <span className="font-extrabold text-[11px] text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1">
                       <Zap className="w-3 h-3 text-amber-400" />
-                      <span>{msg.type === 'whale' ? 'High Roller Alert' : 'System Notice'}</span>
+                      <span>{msg.type === 'whale' ? t('highRollerAlert') : t('systemNotice')}</span>
                     </span>
                     <span className="text-[10px] text-amber-400/70 font-mono">
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -108,7 +113,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ messages, onSendMessage }) => 
               >
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className={`font-bold text-[11px] ${isUser ? 'text-blue-100' : 'text-amber-400'}`}>
-                    {isUser ? 'You' : msg.user}
+                    {isUser ? t('you') : msg.user}
                   </span>
                   {msg.badge && (
                     <span className="bg-amber-500/20 text-amber-300 text-[9px] px-1 rounded font-mono font-bold">
@@ -149,7 +154,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ messages, onSendMessage }) => 
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={t('typeMessage')}
             maxLength={140}
             className="flex-1 bg-[#0D1117] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-400 font-sans"
           />

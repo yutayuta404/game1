@@ -28,7 +28,8 @@ router.post('/telegram', asyncHandler(async (req: Request, res: Response) => {
 
   if (!user) {
     user = await prisma.user.create({
-      data: { username, balance: 100 }
+      // Signup bonus: spendable but permanently unwithdrawable (bonusLocked)
+      data: { username, balance: 100, bonusLocked: 100 }
     });
   }
 
@@ -59,7 +60,9 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
     user = await prisma.user.create({
       data: {
         username: cleanUsername,
-        balance: 100
+        // Signup bonus: spendable but permanently unwithdrawable (bonusLocked)
+        balance: 100,
+        bonusLocked: 100
       }
     });
   }

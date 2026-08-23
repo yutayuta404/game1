@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Coins, LogOut, Plus, Minus, User as UserIcon, Flame, Trophy, Zap } from 'lucide-react';
+import { Coins, LogOut, Plus, Minus, User as UserIcon, Flame, Trophy, Zap, Globe } from 'lucide-react';
 import { sound } from '../utils/audio';
 import { api } from '../services/api';
+import { useLang, type Lang } from '../i18n';
 
 interface ProfileTabProps {
   username: string;
@@ -27,6 +28,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onWithdraw,
 }) => {
   const [payments, setPayments] = useState<any[] | null>(null);
+  const { t, lang, setLang } = useLang();
 
   useEffect(() => {
     let cancelled = false;
@@ -59,12 +61,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               {username || 'Player'}
             </h2>
             <p className="text-[11px] font-mono text-gray-400 mt-0.5">
-              Player · Round #{roundId}
+              {t('playerRound', { n: roundId })}
             </p>
             <div className="flex items-center gap-1 mt-1">
               <Flame className="w-3 h-3 text-amber-400" />
               <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
-                Active
+                {t('active')}
               </span>
             </div>
           </div>
@@ -77,7 +79,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         <div className="relative flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 flex items-center gap-1">
-              <Coins className="w-3 h-3 text-amber-400" /> Total Balance
+              <Coins className="w-3 h-3 text-amber-400" /> {t('totalBalance')}
             </p>
             <p className="text-2xl font-mono font-black text-amber-400 mt-0.5">
               ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -92,7 +94,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               className="flex items-center justify-center gap-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-xs px-3 py-2 rounded-xl shadow-sm shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              Top Up
+              {t('topUp')}
             </button>
             <button
               onClick={() => {
@@ -103,7 +105,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               className="flex items-center justify-center gap-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/50 text-emerald-300 font-extrabold text-xs px-3 py-2 rounded-xl active:scale-95 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <Minus className="w-3.5 h-3.5 stroke-[3]" />
-              Withdraw
+              {t('withdraw')}
             </button>
           </div>
         </div>
@@ -111,19 +113,19 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         {/* Withdrawable split */}
         <div className="relative mt-3 pt-3 border-t border-[#30363D]/70 space-y-1.5">
           <div className="flex items-center justify-between text-[11px] font-mono">
-            <span className="text-gray-400">Withdrawable</span>
+            <span className="text-gray-400">{t('withdrawable')}</span>
             <span className="font-bold text-emerald-400">
               ${withdrawable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] font-mono">
-            <span className="text-gray-400">Locked (needs play)</span>
+            <span className="text-gray-400">{t('lockedFunds')}</span>
             <span className={`font-bold ${(balance - withdrawable) > 0 ? 'text-orange-300' : 'text-gray-500'}`}>
               ${Math.max(0, balance - withdrawable).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <p className="text-[9px] text-gray-500 leading-relaxed pt-0.5">
-            Funds unlock as you play — every $1 wagered releases $1 for withdrawal.
+            {t('unlockHint')}
           </p>
         </div>
       </div>
@@ -131,11 +133,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
       {/* Session stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">Bets Placed</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">{t('betsPlaced')}</p>
           <p className="text-xl font-mono font-black text-white mt-1">{sessionBets}</p>
         </div>
         <div className="bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">Total Staked</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">{t('totalStaked')}</p>
           <p className="text-xl font-mono font-black text-emerald-400 mt-1">
             ${sessionStaked.toLocaleString()}
           </p>
@@ -144,40 +146,72 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
       {/* Fee system info */}
       <div className="w-full bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 space-y-1.5 shadow-lg">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-1">House Rules</p>
+        <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-1">{t('houseRules')}</p>
         <div className="flex items-center justify-between text-[11px] font-mono">
-          <span className="text-gray-400">Prize pool</span>
+          <span className="text-gray-400">{t('prizePool')}</span>
           <span className="font-bold text-white">89%</span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono">
-          <span className="text-gray-400">House fee</span>
+          <span className="text-gray-400">{t('houseFee')}</span>
           <span className="font-bold text-blue-300">10%</span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono">
           <span className="text-gray-400 flex items-center gap-1">
-            <Trophy className="w-3 h-3 text-amber-400" /> Jackpot fee
+            <Trophy className="w-3 h-3 text-amber-400" /> {t('jackpotFee')}
           </span>
           <span className="font-bold text-amber-400">1%</span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono">
           <span className="text-gray-400 flex items-center gap-1">
-            <Zap className="w-3 h-3 text-amber-400" /> Jackpot odds
+            <Zap className="w-3 h-3 text-amber-400" /> {t('jackpotOdds')}
           </span>
-          <span className="font-bold text-emerald-400">1 in 2,076</span>
+          <span className="font-bold text-emerald-400">{t('jackpotOddsVal')}</span>
+        </div>
+      </div>
+
+      {/* Language selector */}
+      <div className="w-full bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+          <Globe className="w-3 h-3 text-blue-400" /> {t('language')}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { id: 'en' as Lang, label: 'English', flag: '🇬🇧' },
+            { id: 'my' as Lang, label: 'မြန်မာ', flag: '🇲🇲' },
+          ]).map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => {
+                if (lang !== opt.id) {
+                  sound.playClick();
+                  setLang(opt.id);
+                }
+              }}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all active:scale-95 cursor-pointer ${
+                lang === opt.id
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black border-amber-400 shadow-sm shadow-amber-500/20'
+                  : 'bg-[#0D1117] text-gray-300 border-[#30363D] hover:border-gray-500'
+              }`}
+            >
+              <span>{opt.flag}</span>
+              <span>{opt.label}</span>
+              {lang === opt.id && <span className="ml-0.5">✓</span>}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Transaction history */}
       <div className="w-full bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-[#30363D]/70 bg-white/[0.03]">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">Transaction History</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400">{t('transactionHistory')}</p>
         </div>
         <div className="divide-y divide-[#30363D]/40 max-h-72 overflow-y-auto no-scrollbar">
           {payments === null ? (
-            <p className="text-center text-[11px] text-gray-500 py-5 font-mono">Loading…</p>
+            <p className="text-center text-[11px] text-gray-500 py-5 font-mono">{t('loading')}</p>
           ) : payments.length === 0 ? (
             <p className="text-center text-[11px] text-gray-500 py-6 font-mono">
-              No deposits or withdrawals yet.
+              {t('noPaymentsYet')}
             </p>
           ) : (
             payments.map((pr) => {
@@ -197,7 +231,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                           ? 'bg-blue-950/60 text-blue-300 border-blue-600/40'
                           : 'bg-violet-950/60 text-violet-300 border-violet-600/40'
                       }`}>
-                        {pr.type}
+                        {t(pr.type as 'TOPUP' | 'WITHDRAW')}
                       </span>
                       <span className={`font-mono font-bold text-sm ${isTopupReq ? 'text-emerald-400' : 'text-orange-300'}`}>
                         {isTopupReq ? '+' : '−'}{Number(pr.coins).toLocaleString()} 🪙
@@ -209,7 +243,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
                     </p>
                   </div>
                   <span className={`shrink-0 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${statusChip}`}>
-                    {pr.status}
+                    {t(pr.status as 'PENDING' | 'APPROVED' | 'REJECTED')}
                   </span>
                 </div>
               );
@@ -227,7 +261,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         className="w-full py-3 bg-red-950/40 hover:bg-red-900/50 border border-red-500/40 text-red-300 font-extrabold text-xs rounded-2xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
       >
         <LogOut className="w-4 h-4" />
-        Log Out
+        {t('logOut')}
       </button>
     </div>
   );

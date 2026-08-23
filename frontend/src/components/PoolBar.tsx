@@ -1,4 +1,5 @@
 import { Trophy } from 'lucide-react';
+import { useLang } from '../i18n';
 
 interface PoolBarProps {
   messiPool: number;
@@ -6,6 +7,7 @@ interface PoolBarProps {
 }
 
 export const PoolBar: React.FC<PoolBarProps> = ({ messiPool, ronaldoPool }) => {
+  const { t } = useLang();
   const totalPool = messiPool + ronaldoPool;
   const messiPct = totalPool > 0 ? (messiPool / totalPool) * 100 : 50;
   const ronaldoPct = 100 - messiPct;
@@ -28,7 +30,7 @@ export const PoolBar: React.FC<PoolBarProps> = ({ messiPool, ronaldoPool }) => {
 
         <div className="text-gray-400 text-[11px] font-mono flex items-center gap-1">
           <Trophy className="w-3 h-3 text-amber-400" />
-          <span>Pool: ${totalPool.toLocaleString()}</span>
+          <span>{t('poolLabel')} ${totalPool.toLocaleString()}</span>
         </div>
 
         <div className="flex items-center gap-1.5 text-red-400">
@@ -43,7 +45,7 @@ export const PoolBar: React.FC<PoolBarProps> = ({ messiPool, ronaldoPool }) => {
       {totalPool === 0 ? (
         /* Empty state — no real bets yet */
         <div className="h-4 rounded-full bg-[#0D1117] border border-[#30363D]/80 flex items-center justify-center">
-          <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">No bets yet — be the first</span>
+          <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">{t('noBetsYet')}</span>
         </div>
       ) : (
         <>

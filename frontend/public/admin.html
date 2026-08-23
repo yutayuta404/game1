@@ -45,6 +45,7 @@
   #gate button { width:100%; }
   .shot { max-width:120px; max-height:120px; border-radius:8px; border:1px solid #30363D; cursor:pointer; }
   .tbadge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; font-family:ui-monospace,monospace; }
+  .botbadge { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; background:#4C1D95; color:#C4B5FD; font-size:9px; font-weight:800; letter-spacing:.5px; vertical-align:middle; }
   .t-BET { background:#1E3A5F; color:#7DD3FC; }
   .t-WIN { background:#064E3B; color:#34D399; }
   .t-LOSS { background:#7F1D1D; color:#FCA5A5; }
@@ -145,6 +146,8 @@ async function call(path, opts = {}) {
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtT = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const fmtD = (o) => Object.entries(o || {}).map(([k, v]) => `${esc(k)}=<b>${esc(v)}</b>`).join(' · ');
+let BOT_NAMES = new Set();
+const botTag = (username) => BOT_NAMES.has(username) ? ' <span class="botbadge">BOT</span>' : '';
 
 async function loadVault() {
   try {
@@ -156,9 +159,10 @@ async function loadVault() {
 async function loadUsers() {
   const f = $('userFilter').value.trim().toLowerCase();
   const { users } = await call('/admin/users');
+  BOT_NAMES = new Set(users.filter(u => u.isBot).map(u => u.username));
   $('usersBody').innerHTML = users
     .filter(u => !f || u.username.toLowerCase().includes(f))
-    .map(u => `<tr><td>${esc(u.username)}</td><td><b>${(+u.balance).toFixed(2)}</b></td><td class="hide-sm">${(+u.withdrawableBalance).toFixed(2)}</td><td><button class="ghost" onclick="inspect('${u.id}')">Inspect</button> <button class="ghost" onclick="quick('${esc(u.username)}')">Adjust</button></td></tr>`).join('')
+    .map(u => `<tr><td>${esc(u.username)}${u.isBot ? '<span class="botbadge">BOT</span>' : ''}</td><td><b>${(+u.balance).toFixed(2)}</b></td><td class="hide-sm">${(+u.withdrawableBalance).toFixed(2)}</td><td><button class="ghost" onclick="inspect('${u.id}')">Inspect</button> <button class="ghost" onclick="quick('${esc(u.username)}')">Adjust</button></td></tr>`).join('')
     || '<tr><td colspan="4" class="muted">No users</td></tr>';
 }
 
@@ -170,7 +174,7 @@ async function loadAudit() {
     const { events } = await call('/admin/audit?limit=200');
     $('auditBody').innerHTML = events.map((e) => `<tr>
       <td class="muted">${fmtT(e.createdAt)}</td>
-      <td>${esc(e.username)}</td>
+      <td>${esc(e.username)}${botTag(e.username)}</td>
       <td><span class="tbadge t-${esc(e.type)}">${esc(e.type)}</span></td>
       <td class="muted" style="font-size:11px">${fmtD(safeParse(e.detail))}</td>
     </tr>`).join('') || '<tr><td colspan="4" class="muted">No activity yet</td></tr>';
@@ -186,7 +190,7 @@ window.inspect = async (id) => {
     $('detailInner').innerHTML = `
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:8px">
-        <h2 style="margin:0">Inspect — ${esc(u.username)}</h2>
+        <h2 style="margin:0">Inspect — ${esc(u.username)}${u.isBot ? '<span class="botbadge">BOT</span>' : ''}</h2>
         <button class="ghost" onclick="document.getElementById('detail').style.display='none'">Close</button>
       </div>
       <div class="stat">Balance <b>${(+u.balance).toFixed(2)}</b></div>

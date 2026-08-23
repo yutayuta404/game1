@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { sound } from '../utils/audio';
+import { useLang } from '../i18n';
 
 interface PaymentFormModalProps {
   mode: 'topup' | 'withdraw';
@@ -43,6 +44,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { t } = useLang();
 
   const pkg = PACKAGES[pkgIdx];
   const isTopup = mode === 'topup';
@@ -50,7 +52,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 
   const pickFile = (f: File | undefined) => {
     if (!f) return;
-    if (f.size > 2 * 1024 * 1024) { setError('Image too large (max 2 MB)'); return; }
+    if (f.size > 2 * 1024 * 1024) { setError(t('imageTooLarge')); return; }
     setError('');
     const reader = new FileReader();
     reader.onload = () => setScreenshot(String(reader.result || ''));
@@ -63,14 +65,14 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
   const submit = async () => {
     if (submitting) return;
     setError('');
-    if (isTopup && !canSubmitTopup) { setError('Select platform and enter your Transaction No/ID'); return; }
-    if (!isTopup && !canSubmitWithdraw) { setError('Check amount (≤ withdrawable), platform and account number'); return; }
+    if (isTopup && !canSubmitTopup) { setError(t('errTopupMissing')); return; }
+    if (!isTopup && !canSubmitWithdraw) { setError(t('errWithdrawInvalid')); return; }
     setSubmitting(true);
     try {
       await api.createPaymentRequest(isTopup ? {
         type: 'TOPUP',
         coins: pkg.coins,
-        packageLabel: `${pkg.mmk.toLocaleString()} MMK · ${pkg.coins.toLocaleString()} Coins`,
+        packageLabel: `${pkg.mmk.toLocaleString()} MMK · ${pkg.coins.toLocaleString()} ${t('coinsWord')}`,
         platform,
         txnRef,
         screenshot: screenshot || undefined,
@@ -86,7 +88,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       onSubmitted?.();
       setTimeout(onClose, 1600);
     } catch (e: any) {
-      setError(e?.message || 'Submission failed');
+      setError(e?.message || t('submissionFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -98,14 +100,12 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
       <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="w-full max-w-xs bg-[#161B22] border border-emerald-500/50 rounded-2xl shadow-2xl p-6 text-center animate-in fade-in zoom-in-95 duration-150">
           <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto" />
-          <h2 className="text-xl font-extrabold text-white mt-3">Request Submitted!</h2>
+          <h2 className="text-xl font-extrabold text-white mt-3">{t('requestSubmitted')}</h2>
           <p className="text-xs text-gray-400 leading-relaxed mt-1.5">
-            {isTopup
-              ? 'Our Care Team will verify your transfer and credit your coins shortly.'
-              : 'Coins have been held in escrow. Payout will be sent within 24 hours.'}
+            {isTopup ? t('topupSuccessNote') : t('withdrawSuccessNote')}
           </p>
           <span className="inline-block mt-3 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-mono uppercase tracking-widest">
-            Pending review
+            {t('pendingReview')}
           </span>
         </div>
       </div>
@@ -122,12 +122,12 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg bg-[#161B22] border border-[#30363D] text-gray-400 hover:text-white active:scale-95 transition-all cursor-pointer"
-            aria-label="Back"
+            aria-label={t('back')}
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </button>
           <h1 className="text-base font-extrabold text-white tracking-tight">
-            Payment <span className="text-amber-400">Form</span>
+            {t('paymentFormMain')} <span className="text-amber-400">{t('paymentFormAccent')}</span>
           </h1>
         </div>
 
@@ -136,15 +136,15 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           {isTopup && (
             <>
               <div>
-                <SectionLabel>Payment Info</SectionLabel>
+                <SectionLabel>{t('paymentInfo')}</SectionLabel>
                 <p className="text-gray-500 text-xs font-mono -mt-0.5">
-                  Name: Nyein Chan Latt · Pay&nbsp;No:&nbsp;<span className="text-amber-400">09260096272</span>
+                  {t('nameLabel')} Nyein Chan Latt · {t('payNoLabel')}&nbsp;<span className="text-amber-400">09260096272</span>
                 </p>
               </div>
 
               {/* Coin package */}
               <div>
-                <SectionLabel>Select Coin Package</SectionLabel>
+                <SectionLabel>{t('selectCoinPackage')}</SectionLabel>
                 <div className="relative">
                   <select
                     value={pkgIdx}
@@ -153,7 +153,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   >
                     {PACKAGES.map((p, i) => (
                       <option key={i} value={i}>
-                        {p.mmk.toLocaleString()} MMK → {p.coins.toLocaleString()} Coins
+                        {p.mmk.toLocaleString()} MMK → {p.coins.toLocaleString()} {t('coinsWord')}
                       </option>
                     ))}
                   </select>
@@ -163,13 +163,13 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 
               {/* Platform */}
               <div>
-                <SectionLabel>Select Platform</SectionLabel>
+                <SectionLabel>{t('selectPlatform')}</SectionLabel>
                 <div className="relative">
                   <button
                     onClick={() => setPlatformOpen((o) => !o)}
                     className={`${inputCls} flex items-center justify-between cursor-pointer`}
                   >
-                    <span className={platform ? '' : 'text-gray-500'}>{platform || 'Select platform'}</span>
+                    <span className={platform ? '' : 'text-gray-500'}>{platform || t('selectPlatformPh')}</span>
                     <ChevronDown className={`w-4 h-4 text-amber-400 transition-transform ${platformOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {platformOpen && (
@@ -193,22 +193,21 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
 
               {/* Transaction No */}
               <div>
-                <SectionLabel>Transaction No/ID</SectionLabel>
+                <SectionLabel>{t('txnNoId')}</SectionLabel>
                 <input
                   value={txnRef}
                   onChange={(e) => setTxnRef(e.target.value)}
-                  placeholder="Transfer reference / txn ID"
+                  placeholder={t('txnRefPh')}
                   className={inputCls}
                 />
                 <p className="text-[10px] text-gray-500 mt-1">
-                  Copy it from your banking app receipt after paying to{' '}
-                  <span className="text-amber-400/90">09260096272</span>.
+                  {t('txnHint', { phone: '09260096272' })}
                 </p>
               </div>
 
               {/* Screenshot dropzone */}
               <div>
-                <SectionLabel>Payment Screenshot</SectionLabel>
+                <SectionLabel>{t('paymentScreenshot')}</SectionLabel>
                 <div
                   onClick={() => fileRef.current?.click()}
                   className="w-full h-44 bg-[#10161d] border border-dashed border-[#30363D] hover:border-amber-400/60 rounded-xl flex items-center justify-center cursor-pointer transition-colors overflow-hidden"
@@ -219,7 +218,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                     <div className="flex flex-col items-center gap-2 px-6 text-center">
                       <Camera className="w-8 h-8 text-amber-400/70" />
                       <p className="text-gray-500 text-xs leading-relaxed">
-                        Attach a screenshot of your payment receipt.
+                        {t('attachReceipt')}
                       </p>
                     </div>
                   )}
@@ -236,7 +235,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                     onClick={() => fileRef.current?.click()}
                     className="px-8 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <Camera className="w-3.5 h-3.5" /> Choose Image
+                    <Camera className="w-3.5 h-3.5" /> {t('chooseImage')}
                   </button>
                 </div>
               </div>
@@ -246,16 +245,16 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           {/* ===== WITHDRAW ONLY ===== */}
           {!isTopup && (
             <>
-              <SectionLabel>Withdrawal Info</SectionLabel>
+              <SectionLabel>{t('withdrawalInfo')}</SectionLabel>
               <div className="flex items-center justify-between bg-[#161B22] border border-emerald-500/40 rounded-xl px-4 py-3">
-                <span className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">Withdrawable</span>
+                <span className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{t('withdrawable')}</span>
                 <span className="font-mono font-black text-emerald-400">
                   ${withdrawable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
 
               <div>
-                <SectionLabel>Amount of Coins</SectionLabel>
+                <SectionLabel>{t('coinsAmount')}</SectionLabel>
                 <input
                   type="number"
                   min="1"
@@ -267,13 +266,13 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                 />
               </div>
 
-              <SectionLabel>Select Platform</SectionLabel>
+              <SectionLabel>{t('selectPlatform')}</SectionLabel>
               <div className="relative">
                 <button
                   onClick={() => setPlatformOpen((o) => !o)}
                   className={`${inputCls} flex items-center justify-between cursor-pointer`}
                 >
-                  <span className={platform ? '' : 'text-gray-500'}>{platform || 'Select platform'}</span>
+                  <span className={platform ? '' : 'text-gray-500'}>{platform || t('selectPlatformPh')}</span>
                   <ChevronDown className={`w-4 h-4 text-amber-400 transition-transform ${platformOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {platformOpen && (
@@ -294,15 +293,15 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                 )}
               </div>
 
-              <SectionLabel>Your Account Number (Pay No)</SectionLabel>
+              <SectionLabel>{t('accountNumber')}</SectionLabel>
               <input
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder="e.g. 09xxxxxxxxx"
+                placeholder={t('egPhone')}
                 className={inputCls}
               />
               <p className="text-[10px] text-gray-500 -mt-2">
-                Coins are deducted immediately and held in escrow. If rejected, they refund automatically.
+                {t('escrowHint')}
               </p>
             </>
           )}
@@ -312,34 +311,34 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             onClick={() => setShowProcess((v) => !v)}
             className="mx-auto block text-[10px] font-mono text-amber-400 underline underline-offset-2 cursor-pointer"
           >
-            {showProcess ? 'Hide' : 'View'} Payment Process
+            {showProcess ? t('hideProcess') : t('viewProcess')}
           </button>
           {showProcess && (
             <div className="bg-[#10161d] border border-[#30363D] rounded-xl p-4 space-y-2 text-xs text-gray-300 leading-relaxed">
               {isTopup ? (
                 <>
-                  <p className="font-bold text-white">Payment Process —</p>
-                  <p>* Send MMK via Kpay / Wave / Ayapay to <strong className="text-amber-400">09260096272</strong> (Nyein Chan Latt)</p>
-                  <p>* Select the coin package above</p>
-                  <p>* Enter your Transaction No/ID after transferring</p>
-                  <p>* Attach the payment screenshot and hit Submit</p>
-                  <p>* Our Care Team verifies and credits your coins 🎉</p>
+                  <p className="font-bold text-white">{t('topupProcessTitle')}</p>
+                  <p>{t('topupStep1', { phone: '09260096272' })}</p>
+                  <p>{t('topupStep2')}</p>
+                  <p>{t('topupStep3')}</p>
+                  <p>{t('topupStep4')}</p>
+                  <p>{t('topupStep5')}</p>
                 </>
               ) : (
                 <>
-                  <p className="font-bold text-white">Withdrawal Process —</p>
-                  <p>* Enter coin amount (must be ≤ withdrawable)</p>
-                  <p>* Choose payout platform + your account number</p>
-                  <p>* Coins are held immediately upon submission</p>
-                  <p>* Care Team sends MMK within 24h of approval</p>
-                  <p>* Rejected requests auto-refund your coins</p>
+                  <p className="font-bold text-white">{t('withdrawProcessTitle')}</p>
+                  <p>{t('withdrawStep1')}</p>
+                  <p>{t('withdrawStep2')}</p>
+                  <p>{t('withdrawStep3')}</p>
+                  <p>{t('withdrawStep4')}</p>
+                  <p>{t('withdrawStep5')}</p>
                 </>
               )}
               <button
                 onClick={() => setShowProcess(false)}
                 className="w-full mt-2 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-xs rounded-lg active:scale-95 transition-all cursor-pointer"
               >
-                OK
+                {t('ok')}
               </button>
             </div>
           )}
@@ -353,11 +352,11 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
             disabled={submitting || (isTopup ? !canSubmitTopup : !canSubmitWithdraw)}
             className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Submitting…' : 'Submit'}
+            {submitting ? t('submitting') : t('submit')}
           </button>
 
           <p className="text-center text-[10px] text-gray-600">
-            Requests are reviewed by our Care Team before coins are credited.
+            {t('reviewNote')}
           </p>
         </div>
       </div>

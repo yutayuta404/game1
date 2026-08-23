@@ -2,6 +2,7 @@ import { Gamepad2, MessageSquare, User } from 'lucide-react';
 import type { TabType } from '../types/clash';
 import { sound } from '../utils/audio';
 import { hapticLight } from '../utils/telegram';
+import { useLang } from '../i18n';
 
 interface BottomTabBarProps {
   activeTab: TabType;
@@ -15,21 +16,22 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
   onTabChange,
   unreadChatCount = 0,
 }) => {
+  const { t } = useLang();
   const tabs: Array<{ id: TabType; label: string; icon: typeof Gamepad2; badge?: number }> = [
     {
       id: 'game',
-      label: 'Game',
+      label: t('tabGame'),
       icon: Gamepad2,
     },
     {
       id: 'chat',
-      label: 'Chat',
+      label: t('tabChat'),
       icon: MessageSquare,
       badge: unreadChatCount > 0 ? unreadChatCount : undefined,
     },
     {
       id: 'profile',
-      label: 'Profile',
+      label: t('tabProfile'),
       icon: User,
     },
   ];

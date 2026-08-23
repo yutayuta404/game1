@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { History, X } from 'lucide-react';
 import type { RoundHistoryItem } from '../types/clash';
 import { sound } from '../utils/audio';
+import { useLang } from '../i18n';
 
 interface HistoryRibbonProps {
   history: RoundHistoryItem[];
@@ -9,6 +10,7 @@ interface HistoryRibbonProps {
 
 export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
   const [selectedRound, setSelectedRound] = useState<RoundHistoryItem | null>(null);
+  const { t } = useLang();
 
   // Compute Messi vs Ronaldo win stats
   const messiWins = history.filter((h) => h.winner === 'messi').length;
@@ -20,7 +22,7 @@ export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
           <History className="w-3 h-3 text-gray-400" />
-          <span>Last 10 Rounds</span>
+          <span>{t('last10Rounds')}</span>
         </div>
 
         {/* Win Ratio Ticker */}
@@ -68,7 +70,7 @@ export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold text-sm text-white">
-                  Round #{selectedRound.roundId}
+                  {t('roundNo', { n: selectedRound.roundId })}
                 </span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${
@@ -77,7 +79,7 @@ export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
                       : 'bg-red-600/20 text-red-400 border border-red-500/30'
                   }`}
                 >
-                  {selectedRound.winner === 'messi' ? 'Messi Won' : 'Ronaldo Won'}
+                  {selectedRound.winner === 'messi' ? t('messiWon') : t('ronaldoWon')}
                 </span>
               </div>
               <button
@@ -90,19 +92,19 @@ export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
 
             <div className="space-y-2 text-xs font-mono">
               <div className="flex justify-between py-1 border-b border-[#30363D]">
-                <span className="text-gray-400">Winning Multiplier</span>
+                <span className="text-gray-400">{t('winningMultiplier')}</span>
                 <span className="text-amber-400 font-bold">{selectedRound.multiplier.toFixed(2)}x</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#30363D]">
-                <span className="text-gray-400">Total Pool Volume</span>
+                <span className="text-gray-400">{t('totalPoolVolume')}</span>
                 <span className="text-gray-200 font-bold">${selectedRound.totalPool.toLocaleString()}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#30363D]">
-                <span className="text-blue-400">Messi Pool</span>
+                <span className="text-blue-400">{t('messiPool')}</span>
                 <span className="text-blue-300 font-bold">${selectedRound.messiPool.toLocaleString()}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-red-400">Ronaldo Pool</span>
+                <span className="text-red-400">{t('ronaldoPool')}</span>
                 <span className="text-red-300 font-bold">${selectedRound.ronaldoPool.toLocaleString()}</span>
               </div>
             </div>
@@ -111,7 +113,7 @@ export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
               onClick={() => setSelectedRound(null)}
               className="mt-4 w-full py-1.5 bg-[#21262D] hover:bg-[#30363D] text-gray-200 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer"
             >
-              Close
+              {t('close')}
             </button>
           </div>
         </div>
