@@ -36,7 +36,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         <div>
           <div className="flex items-center gap-1.5 leading-none">
             <span className="font-extrabold text-sm tracking-tight text-white">
-              CLASH<span className="text-amber-400">DROP</span>
+              0X<span className="text-amber-400">DUEL</span>
             </span>
           </div>
           <span className="text-[10px] font-mono text-gray-400 block mt-0.5">

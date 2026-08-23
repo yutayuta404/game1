@@ -29,8 +29,8 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   onStartAuto,
   onCancelAuto,
 }) => {
-  const [amount, setAmount] = useState<number>(25);
-  const [customInput, setCustomInput] = useState<string>('25');
+  const [amount, setAmount] = useState<number>(100);
+  const [customInput, setCustomInput] = useState<string>('100');
   const [pendingBet, setPendingBet] = useState<{ side: TeamSide; amount: number } | null>(null);
   const [autoOpen, setAutoOpen] = useState<boolean>(false);
   const [autoSide, setAutoSide] = useState<TeamSide>('messi');
@@ -43,7 +43,9 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   const estMessiWin = amount * messiMultiplier;
   const estRonaldoWin = amount * ronaldoMultiplier;
 
-  const presets = [10, 25, 50, 100, 250];
+  const presets = [100, 1000, 10000, 100000];
+
+  const fmtPreset = (val: number) => (val >= 1000 ? `+$${val / 1000}K` : `+$${val}`);
 
   const handlePreset = (val: number) => {
     sound.playChip();
@@ -147,7 +149,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
       </div>
 
       {/* Preset Chips */}
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-4 gap-1.5">
         {presets.map((preset) => (
           <button
             key={preset}
@@ -159,7 +161,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
                 : 'bg-[#0D1117] text-gray-300 border-[#30363D] hover:border-gray-500 disabled:opacity-30'
             }`}
           >
-            +${preset}
+            {fmtPreset(preset)}
           </button>
         ))}
       </div>

@@ -290,7 +290,7 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       ctx.fillStyle = '#F59E0B';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(phaseRef.current === 'dropping' ? 'DROP!' : 'CLASH', width / 2, 13);
+      ctx.fillText(phaseRef.current === 'dropping' ? 'DROP!' : '0XDUEL', width / 2, 13);
       ctx.restore();
 
       animationFrameRef.current = requestAnimationFrame(renderLoop);
