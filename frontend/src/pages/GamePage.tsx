@@ -38,6 +38,7 @@ export default function GamePage() {
   const [withdrawable, setWithdrawable] = useState<number>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [paymentModal, setPaymentModal] = useState<null | 'topup' | 'withdraw'>(null);
+  const [betError, setBetError] = useState<string | null>(null);
 
   // Round State
   const [roundId, setRoundId] = useState<number>(1042);
@@ -166,18 +167,15 @@ export default function GamePage() {
       estPayout: (userCurrentBet?.estPayout || 0) + estPayout,
     });
 
-    // Announce high bets in chat
-    if (amount >= 100) {
-      const whaleNotice: ChatMessage = {
-        id: `whale-${Date.now()}`,
-        type: 'whale',
-        text: `High Roller: You placed $${amount} on ${side === 'messi' ? 'Team Messi' : 'Team Ronaldo'}!`,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, whaleNotice]);
-    }
+    const prevBalanceEntry = { userCurrentBet };
+    setActiveBets((prev) => [newBet, ...prev]);
+    setUserCurrentBet({
+      side,
+      amount: (userCurrentBet?.amount || 0) + amount,
+      estPayout: (userCurrentBet?.estPayout || 0) + estPayout,
+    });
 
-    // Persist to backend best-effort; local round engine stays authoritative
+    // Persist to backend; on failure revert ALL optimistic updates so UI never lies
     try {
       const result = await api.placeBet(side === 'messi' ? 'MESSI' : 'RONALDO', amount);
       if (result?.newBalance !== undefined) {
@@ -187,8 +185,29 @@ export default function GamePage() {
       if ((result as any)?.newWithdrawable !== undefined) {
         setWithdrawable((result as any).newWithdrawable);
       }
+      // Announce high bets in chat only once the bet is actually saved
+      if (amount >= 100) {
+        const whaleNotice: ChatMessage = {
+          id: `whale-${Date.now()}`,
+          type: 'whale',
+          text: `High Roller: You placed $${amount} on ${side === 'messi' ? 'Team Messi' : 'Team Ronaldo'}!`,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, whaleNotice]);
+      }
     } catch (err) {
-      console.error('Bet sync failed (demo continues):', err);
+      setBalance((b) => b + amount);
+      if (side === 'messi') {
+        setMessiPool((p) => Math.max(0, p - amount));
+      } else {
+        setRonaldoPool((p) => Math.max(0, p - amount));
+      }
+      setActiveBets((prev) => prev.filter((b) => b.id !== newBet.id));
+      setUserCurrentBet(prevBalanceEntry.userCurrentBet);
+      hapticWarning();
+      const msg = err instanceof Error ? err.message : 'Bet failed';
+      setBetError(msg.startsWith('Session expired') ? msg : `Bet not placed: ${msg}`);
+      setTimeout(() => setBetError(null), 5000);
     }
   };
 
@@ -572,6 +591,11 @@ export default function GamePage() {
         />
 
         {/* Overlays & Modals */}
+        {betError && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-red-950/95 border border-red-500/60 text-red-200 text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xl max-w-[85%] text-center animate-in fade-in">
+            {betError}
+          </div>
+        )}
         {paymentModal && (
           <PaymentFormModal
             mode={paymentModal}
