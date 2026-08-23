@@ -18,6 +18,9 @@ import { useAuth } from '../hooks/useAuth';
 import { getInitData, getTelegramUsername, hapticSuccess, hapticWarning } from '../utils/telegram';
 import { api } from '../services/api';
 
+// Matches backend NET_POOL_RATE (89%) so displayed multipliers equal real payouts
+const NET_POOL_RATE_UI = 0.89;
+
 // Local system notice shown atop the real chat feed
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
@@ -302,7 +305,7 @@ export default function GamePage() {
           const side: TeamSide = b.selection === 'MESSI' ? 'messi' : 'ronaldo';
           const total = messiPoolRef.current + ronaldoPoolRef.current;
           const sidePool = side === 'messi' ? messiPoolRef.current : ronaldoPoolRef.current;
-          const mult = sidePool > 0 ? (total * 0.96) / sidePool : 1.92;
+          const mult = sidePool > 0 ? (total * NET_POOL_RATE_UI) / sidePool : 1.9;
           return {
             id: b.id,
             roundId: roundIdRef.current,
@@ -349,29 +352,112 @@ export default function GamePage() {
     };
   }, [user]);
 
-  // Ball Drop Landing Callback from Matter.js
+  // ---- Server-authoritative round sync ----
+  const serverDeadlineRef = useRef<number>(0);
+  const serverRoundIdRef = useRef<string>('');
+  const pendingDropRoundRef = useRef<string | null>(null);
+  const settlePayoutRef = useRef<number | null>(null);
+  const seenResultIdRef = useRef<string>('');
+  const [forcedWinner, setForcedWinner] = useState<TeamSide | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let stopped = false;
+
+    const applyResult = (lastResult: any) => {
+      if (!lastResult || lastResult.roundId === seenResultIdRef.current) return;
+      if (phaseRef.current === 'dropping' && pendingDropRoundRef.current === lastResult.roundId) {
+        settlePayoutRef.current = lastResult.myPayout;
+        setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+      }
+      seenResultIdRef.current = lastResult.roundId;
+    };
+
+    const sync = async () => {
+      try {
+        const { round, userBet, lastResult } = await api.getCurrentRound();
+        if (stopped) return;
+        setMessiPool(round.totalMessi || 0);
+        setRonaldoPool(round.totalRonaldo || 0);
+        serverDeadlineRef.current = round.endTimestamp * 1000;
+        serverRoundIdRef.current = round.id;
+        setTimeLeft(Math.max(0, Math.ceil((round.endTimestamp * 1000 - Date.now()) / 1000)));
+
+        // Restore an open bet placed earlier in this round (e.g. after reload)
+        if (userBet && !userCurrentBetRef.current && phaseRef.current === 'betting') {
+          const side: TeamSide = userBet.selection === 'MESSI' ? 'messi' : 'ronaldo';
+          setUserCurrentBet({ side, amount: userBet.amount, estPayout: userBet.amount * 1.9 });
+        }
+
+        applyResult(lastResult);
+      } catch { /* offline — retry next tick */ }
+    };
+
+    sync();
+    const t = setInterval(sync, 1400);
+    return () => { stopped = true; clearInterval(t); };
+  }, [user]);
+
+  // Local ticker counts down against the server deadline between polls
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (phaseRef.current !== 'betting' || !serverDeadlineRef.current) return;
+      const remainingMs = serverDeadlineRef.current - Date.now();
+      const secs = Math.max(0, Math.ceil(remainingMs / 1000));
+      setTimeLeft((prev) => {
+        if (secs < prev && secs <= 5 && secs > 0) sound.playTick();
+        return secs;
+      });
+      if (remainingMs <= 0) {
+        pendingDropRoundRef.current = serverRoundIdRef.current;
+        setForcedWinner(null);
+        setPhase('dropping');
+      }
+    }, 500);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Faster polling while a drop awaits its server verdict
+  useEffect(() => {
+    if (phase !== 'dropping') return;
+    const rush = setInterval(async () => {
+      try {
+        const { lastResult } = await api.getCurrentRound();
+        if (!lastResult || lastResult.roundId === seenResultIdRef.current) return;
+        if (pendingDropRoundRef.current === lastResult.roundId) {
+          settlePayoutRef.current = lastResult.myPayout;
+          setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+        }
+        seenResultIdRef.current = lastResult.roundId;
+      } catch { /* keep waiting */ }
+    }, 1200);
+    return () => clearInterval(rush);
+  }, [phase]);
+
+  // Ball Drop Landing Callback — winner & payout come from the SERVER
   const handleBallLanded = useCallback((winner: TeamSide) => {
     setPhase('finished');
 
     const total = messiPoolRef.current + ronaldoPoolRef.current;
     const winPool = winner === 'messi' ? messiPoolRef.current : ronaldoPoolRef.current;
-    const winningMultiplier = winPool > 0 ? (total * 0.96) / winPool : 1.92;
+    const winningMultiplier = winPool > 0 ? (total * NET_POOL_RATE_UI) / winPool : 0;
 
+    const bet = userCurrentBetRef.current;
     let userWinnings: number | null = null;
-    if (userCurrentBetRef.current) {
-      if (userCurrentBetRef.current.side === winner) {
-        userWinnings = userCurrentBetRef.current.amount * winningMultiplier;
-        setBalance((prev) => prev + userWinnings!);
-        setWithdrawable((prev) => prev + userWinnings!);
-        hapticSuccess(); // won round
+    if (bet) {
+      if (bet.side === winner) {
+        userWinnings = settlePayoutRef.current ?? 0;
+        hapticSuccess();
       } else {
         userWinnings = 0;
-        hapticWarning(); // lost round
+        hapticWarning();
       }
     }
 
-    // Record round history
-    const newHistoryItem: RoundHistoryItem = {
+    // Pull authoritative balances — server already credited/debited
+    refreshAuth();
+
+    setHistory((prev) => [{
       roundId: roundIdRef.current,
       winner,
       multiplier: winningMultiplier,
@@ -379,22 +465,15 @@ export default function GamePage() {
       messiPool: messiPoolRef.current,
       ronaldoPool: ronaldoPoolRef.current,
       timestamp: Date.now(),
-    };
+    }, ...prev.slice(0, 19)]);
 
-    setHistory((prev) => [newHistoryItem, ...prev.slice(0, 19)]);
-
-    // Broadcast system winner alert in chat
-    const winChatMsg: ChatMessage = {
+    setMessages((prev) => [...prev, {
       id: `result-${Date.now()}`,
       type: 'system',
-      text: `Round #${roundIdRef.current} Settled: ${
-        winner === 'messi' ? 'Team Messi' : 'Team Ronaldo'
-      } WON! Multiplier: ${winningMultiplier.toFixed(2)}x ($${total.toLocaleString()} total pool).`,
+      text: `Round settled: ${winner === 'messi' ? 'Team Messi' : 'Team Ronaldo'} won! ${winningMultiplier.toFixed(2)}x ($${total.toLocaleString()} pool).`,
       timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, winChatMsg]);
+    }]);
 
-    // Show result celebration popup
     setResultModal({
       isOpen: true,
       winner,
@@ -404,7 +483,6 @@ export default function GamePage() {
       userWinnings,
     });
 
-    // Reset for next round after 5 seconds
     setTimeout(() => {
       setResultModal(null);
       setRoundId((prev) => prev + 1);
@@ -414,29 +492,10 @@ export default function GamePage() {
       setActiveBets([]);
       setMessiPool(0);
       setRonaldoPool(0);
+      setForcedWinner(null);
+      pendingDropRoundRef.current = null;
+      settlePayoutRef.current = null;
     }, 4500);
-  }, []);
-
-  // Main 60-Second Countdown & Round Engine
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (phaseRef.current === 'betting') {
-        if (timeLeftRef.current > 0) {
-          setTimeLeft((prev) => {
-            const next = prev - 1;
-            if (next <= 5 && next > 0) {
-              sound.playTick();
-            }
-            return next;
-          });
-        } else {
-          // Timer reached 0 -> Trigger ball drop!
-          setPhase('dropping');
-        }
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
   }, []);
 
   if (authLoading) {
@@ -529,6 +588,7 @@ export default function GamePage() {
               {/* Matter.js BallDrop Canvas (h-64 touch-friendly height) */}
               <BallDropCanvas
                 phase={phase}
+                forcedWinner={forcedWinner}
                 onBallLanded={handleBallLanded}
               />
 

@@ -83,8 +83,8 @@ class ApiService {
     return this.request<{ user: any }>('/auth/me');
   }
 
-  async getCurrentRound(): Promise<{ round: any; userBet: any }> {
-    return this.request<{ round: any; userBet: any }>('/game/round');
+  async getCurrentRound(): Promise<{ round: any; userBet: any; lastResult: any }> {
+    return this.request<{ round: any; userBet: any; lastResult: any }>('/game/round');
   }
 
   async placeBet(selection: 'MESSI' | 'RONALDO', amount: number): Promise<{ success: boolean; bet: any; newBalance: number }> {

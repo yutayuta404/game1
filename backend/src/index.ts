@@ -5,6 +5,7 @@ import authRoutes from './routes/auth';
 import gameRoutes from './routes/game';
 import adminRoutes from './routes/admin';
 import { prisma } from './lib/prisma';
+import { GameService } from './services/gameService';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -43,6 +44,15 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
+
+    // Authoritative settlement loop: settle any expired round every 3s
+    setInterval(async () => {
+      try {
+        await GameService.settleRound();
+      } catch {
+        /* nothing expired — expected most ticks */
+      }
+    }, 3000);
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

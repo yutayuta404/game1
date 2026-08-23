@@ -3,6 +3,7 @@ import { GameService } from '../services/gameService';
 import { PaymentService } from '../services/paymentService';
 import { authenticateToken, optionalAuth, AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
+import { TransactionType } from '../types';
 
 const router = Router();
 
@@ -28,7 +29,43 @@ router.get('/round', optionalAuth, asyncHandler(async (req: AuthenticatedRequest
     }
   }
 
-  res.json({ round, userBet });
+  // Most recent settled round + this user's real payout for it (drives the UI result)
+  const lastSettled = await prisma.round.findFirst({
+    where: { status: 'SETTLED' },
+    orderBy: { endTimestamp: 'desc' },
+  });
+
+  let lastResult: any = null;
+  if (lastSettled) {
+    let myPayout: number | null = null;
+    if (req.user) {
+      const myBets = await prisma.bet.findMany({
+        where: { userId: req.user.userId, roundId: lastSettled.id },
+        select: { id: true },
+      });
+      if (myBets.length > 0) {
+        const wins = await prisma.ledgerTransaction.findMany({
+          where: {
+            userId: req.user.userId,
+            type: TransactionType.WIN,
+            referenceId: { in: myBets.map((b) => b.id) },
+          },
+        });
+        myPayout = wins.reduce((s, w) => s + w.amount, 0);
+      }
+    }
+    lastResult = {
+      roundId: lastSettled.id,
+      winner: lastSettled.winner,
+      totalMessi: lastSettled.totalMessi,
+      totalRonaldo: lastSettled.totalRonaldo,
+      jackpotHit: lastSettled.jackpotHit,
+      endTimestamp: lastSettled.endTimestamp,
+      myPayout,
+    };
+  }
+
+  res.json({ round, userBet, lastResult });
 }));
 
 router.post('/bet', authenticateToken, authAsyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -88,12 +125,20 @@ router.get('/vault', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // ---- Payment Requests (top-up / withdraw forms) ----
-router.post('/payment-requests', authenticateToken, authAsyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/payment-requests', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { type, coins, packageLabel, platform, txnRef, screenshot, accountNumber } = req.body;
-  const result = await PaymentService.createRequest(req.user!.userId, {
-    type, coins: Number(coins), packageLabel, platform, txnRef, screenshot, accountNumber
-  });
-  res.json({ success: true, request: result });
+  try {
+    const result = await PaymentService.createRequest(req.user!.userId, {
+      type, coins: Number(coins), packageLabel, platform, txnRef, screenshot, accountNumber
+    });
+    res.json({ success: true, request: result });
+  } catch (err: any) {
+    // Business-rule rejections (e.g. amount > withdrawable) are client errors, not 500s
+    if (err instanceof Error && err.message.length < 120) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
 }));
 
 router.get('/payment-requests', authenticateToken, authAsyncHandler(async (req: AuthenticatedRequest, res: Response) => {

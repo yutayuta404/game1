@@ -37,11 +37,11 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   const [autoRounds, setAutoRounds] = useState<string>('10');
 
   const totalPool = messiPool + ronaldoPool;
-  const messiMultiplier = messiPool > 0 ? (totalPool * 0.96) / messiPool : null;
-  const ronaldoMultiplier = ronaldoPool > 0 ? (totalPool * 0.96) / ronaldoPool : null;
+  const messiMultiplier = messiPool > 0 ? (totalPool * 0.89) / messiPool : null;
+  const ronaldoMultiplier = ronaldoPool > 0 ? (totalPool * 0.89) / ronaldoPool : null;
 
-  const estMessiWin = amount * (messiMultiplier ?? 1.92);
-  const estRonaldoWin = amount * (ronaldoMultiplier ?? 1.92);
+  const estMessiWin = amount * (messiMultiplier ?? 1.9);
+  const estRonaldoWin = amount * (ronaldoMultiplier ?? 1.9);
 
   const presets = [100, 1000, 10000, 100000];
 
@@ -309,7 +309,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
       {/* Bet Confirmation Modal */}
       {pendingBet && (() => {
         const isMessi = pendingBet.side === 'messi';
-        const mult = (isMessi ? messiMultiplier : ronaldoMultiplier) ?? 1.92;
+        const mult = (isMessi ? messiMultiplier : ronaldoMultiplier) ?? 1.9;
         const estWin = pendingBet.amount * mult;
         return (
           <div

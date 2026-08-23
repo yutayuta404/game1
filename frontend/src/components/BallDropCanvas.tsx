@@ -6,6 +6,7 @@ import { sound } from '../utils/audio';
 
 interface BallDropCanvasProps {
   phase: 'betting' | 'dropping' | 'finished';
+  forcedWinner?: TeamSide | null;
   onBallLanded: (winner: TeamSide) => void;
 }
 
@@ -22,6 +23,7 @@ interface Particle {
 
 export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
   phase,
+  forcedWinner,
   onBallLanded,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,6 +40,8 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
   onBallLandedRef.current = onBallLanded;
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  const forcedWinnerRef = useRef<TeamSide | null>(forcedWinner ?? null);
+  forcedWinnerRef.current = forcedWinner ?? null;
 
   // Setup Matter.js world + ONE unified render loop (runs once on mount)
   useLayoutEffect(() => {
@@ -234,10 +238,10 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         ctx.fill();
         ctx.restore();
 
-        // Landing detection
+        // Landing detection — server-forced verdict overrides physics side
         if (y >= height - 35 && !hasLandedRef.current) {
           hasLandedRef.current = true;
-          const winningSide: TeamSide = x < width / 2 ? 'messi' : 'ronaldo';
+          const winningSide: TeamSide = forcedWinnerRef.current ?? (x < width / 2 ? 'messi' : 'ronaldo');
           setActiveSideGlow(winningSide);
           sound.playWin();
           try {
@@ -287,7 +291,13 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       ctx.fillStyle = '#F59E0B';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(phaseRef.current === 'dropping' ? 'DROP!' : '0XDUEL', width / 2, 13);
+      ctx.fillText(
+        phaseRef.current === 'dropping'
+          ? (forcedWinnerRef.current ? 'DROP!' : 'SETTLING')
+          : '0XDUEL',
+        width / 2,
+        13
+      );
       ctx.restore();
 
       animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -303,9 +313,10 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
     };
   }, []);
 
-  // Phase changes only spawn/remove the dynamic ball — static world untouched
+  // Phase changes only spawn/remove the dynamic ball — static world untouched.
+  // The ball spawns only AFTER the server verdict arrives (forcedWinner set).
   useEffect(() => {
-    if (phase === 'dropping' && engineRef.current) {
+    if (phase === 'dropping' && forcedWinner && engineRef.current) {
       hasLandedRef.current = false;
       setActiveSideGlow(null);
       sound.playDropStart();
@@ -316,8 +327,9 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         ballBodyRef.current = null;
       }
 
-      const randomOffset = (Math.random() - 0.5) * 14;
-      const ball = Matter.Bodies.circle(width / 2 + randomOffset, 18, 9, {
+      // Launch from the winning side's half so the drift looks natural
+      const bias = forcedWinner === 'messi' ? -0.18 : 0.18;
+      const ball = Matter.Bodies.circle(width * (0.5 + bias), 18, 9, {
         restitution: 0.72,
         friction: 0.02,
         frictionAir: 0.008,
@@ -328,15 +340,37 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
 
       ballBodyRef.current = ball;
       Matter.Composite.add(engineRef.current.world, ball);
-    } else if (phase === 'betting') {
-      if (ballBodyRef.current && engineRef.current) {
+    } else if (phase !== 'dropping') {
+      if (ballBodyRef.current && engineRef.current && (phase === 'betting' || phase === 'finished')) {
         Matter.Composite.remove(engineRef.current.world, ballBodyRef.current);
         ballBodyRef.current = null;
       }
-      hasLandedRef.current = false;
-      setActiveSideGlow(null);
+      if (phase === 'betting') {
+        hasLandedRef.current = false;
+        setActiveSideGlow(null);
+      }
     }
-  }, [phase]);
+  }, [phase, forcedWinner]);
+
+  // Steer the live ball toward the server-declared side while it falls
+  useEffect(() => {
+    if (!forcedWinner || !ballBodyRef.current || !engineRef.current) return;
+    const width = canvasRef.current?.width || 360;
+    const targetX = forcedWinner === 'messi' ? width * 0.25 : width * 0.75;
+    const steer = setInterval(() => {
+      const ball = ballBodyRef.current;
+      if (!ball) {
+        clearInterval(steer);
+        return;
+      }
+      const dx = targetX - ball.position.x;
+      Matter.Body.setVelocity(ball, {
+        x: Math.max(-3, Math.min(3, ball.velocity.x + Math.sign(dx) * 0.09)),
+        y: ball.velocity.y,
+      });
+    }, 50);
+    return () => clearInterval(steer);
+  }, [forcedWinner]);
 
   return (
     <div

@@ -10,9 +10,9 @@ export const PoolBar: React.FC<PoolBarProps> = ({ messiPool, ronaldoPool }) => {
   const messiPct = totalPool > 0 ? (messiPool / totalPool) * 100 : 50;
   const ronaldoPct = 100 - messiPct;
 
-  // Multipliers formula (House edge ~4%): Multiplier = (TotalPool * 0.96) / SidePool
-  const messiMultiplier = messiPool > 0 ? ((totalPool * 0.96) / messiPool) : null;
-  const ronaldoMultiplier = ronaldoPool > 0 ? ((totalPool * 0.96) / ronaldoPool) : null;
+  // Multipliers formula (House edge ~11%: Multiplier = (TotalPool * 0.89) / SidePool
+  const messiMultiplier = messiPool > 0 ? ((totalPool * 0.89) / messiPool) : null;
+  const ronaldoMultiplier = ronaldoPool > 0 ? ((totalPool * 0.89) / ronaldoPool) : null;
 
   return (
     <div className="w-full bg-[#161B22] border border-[#30363D] rounded-xl p-2.5 shadow-md">
