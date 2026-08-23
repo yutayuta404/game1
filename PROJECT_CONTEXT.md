@@ -379,6 +379,14 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - **Admin panel**: new "Live Activity" card (auto-refresh 5s, all audit events) + per-user **Inspect** modal (`GET /api/admin/users/:id`) showing bets, full ledger, audit timeline, payments & chat history
 - Ball logo disc enlarged r300→r372 (PNGs regenerated)
 
+### Server-authoritative game loop (2026-08-23)
+- **Backend auto-settler**: `setInterval(3s)` in `index.ts` settles expired rounds — payouts/losses/refunds now happen server-side automatically; history + audits populate
+- **GET /round** now returns `lastResult` (latest SETTLED round: winner, pools, jackpot, and `myPayout` = user's real WIN ledger total for it)
+- **UI engine rewritten to trust the server**: countdown syncs to server `endTimestamp`; at 0 the ball waits ("SETTLING") until the verdict arrives (poll 1.4s normally / 1.2s during drop), then drops steered toward the server winner (`forcedWinner` prop biases launch position + gentle velocity steering); result modal shows the REAL payout from the ledger; balances refresh from `/auth/me`
+- **Multipliers now show the true 0.89 net-pool rate** everywhere (was fake 0.96)
+- Payment request errors return proper **400** with message (was unhandled 500) — e.g. "Amount exceeds withdrawable balance"
+- Verified end-to-end: contested round (20v20) settled → WIN audit for e2e_tester (+35.60 payout), LOSS for deploycheck, lastResult + history populated
+
 ### Current Configuration
 - **Frontend port**: 5173 (dev server usually started with `--force`)
 - **Round duration**: 30 seconds (backend `ROUND_DURATION`; frontend resets `setTimeLeft(30)`)
