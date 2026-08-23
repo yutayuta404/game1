@@ -95,18 +95,14 @@ export class GameService {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Deduct from user balance; wagering unlocks funds for withdrawal
+      // Deduct from balance only — withdrawable grows exclusively from
+      // actual payouts/refunds at settlement, never from stakes placed.
       const newBalance = user.balance - betData.amount;
-      const newWithdrawable = Math.min(
-        (user.withdrawableBalance || 0) + betData.amount,
-        newBalance
-      );
 
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data: {
-          balance: newBalance,
-          withdrawableBalance: newWithdrawable
+          balance: newBalance
         }
       });
 

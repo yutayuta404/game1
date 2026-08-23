@@ -130,12 +130,8 @@ export default function GamePage() {
     if (fromAutoEscrow && !autoBet) return;
 
     if (!fromAutoEscrow) {
-      setBalance((prev) => {
-        const nb = prev - amount;
-        // Playing unlocks funds (capped at remaining balance)
-        setWithdrawable((w) => Math.min(w + amount, nb));
-        return nb;
-      });
+      // Stakes never create withdrawable — only payouts/refunds at settlement do
+      setBalance((prev) => prev - amount);
     }
 
     hapticSuccess(); // bet placed
