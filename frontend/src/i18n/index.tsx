@@ -37,10 +37,11 @@ const en = {
   poolLabel: 'Pool:',
   noBetsYet: 'No bets yet — be the first',
 
-  // Jackpot
-  jackpotPot: 'Jackpot Pot',
-  jackpotOddsVal: '1 in 2,076',
-  jackpotTip: 'Grows with every bet (1% of each wager)',
+  // Cashback
+  cashbackTitle: 'Cashback',
+  cashbackTip: '1% of every bet you place comes back to you',
+  cashbackClaim: 'CLAIM',
+  cashbackRate: 'Your cashback',
 
   // Live bets
   liveBets: 'Live Bets',
@@ -60,8 +61,6 @@ const en = {
   houseRules: 'House Rules',
   prizePool: 'Prize pool',
   houseFee: 'House fee',
-  jackpotFee: 'Jackpot fee',
-  jackpotOdds: 'Jackpot odds',
   transactionHistory: 'Transaction History',
   loading: 'Loading…',
   noPaymentsYet: 'No deposits or withdrawals yet.',
@@ -221,10 +220,11 @@ const my: Record<TKey, string> = {
   poolLabel: 'စုစုပေါင်း:',
   noBetsYet: 'လောင်းကြေး မရှိသေးပါ — ပထမဆုံး ဖြစ်ပါ',
 
-  // Jackpot
-  jackpotPot: 'ဂျက်ပေါ့ ငွေအိတ်',
-  jackpotOddsVal: '2,076 တွင် 1',
-  jackpotTip: 'လောင်းကြေးတိုင်းဖြင့် တိုးပွားသည် (တစ်ခုလျှင် 1%)',
+  // Cashback
+  cashbackTitle: 'ကက်ဆ်ဘက်',
+  cashbackTip: 'သင်ထည့်သော လောင်းကြေးတိုင်း၏ 1% ပြန်ရမည်',
+  cashbackClaim: 'တောင်းခံမည်',
+  cashbackRate: 'သင့် ကက်ဆ်ဘက်',
 
   // Live bets
   liveBets: 'တိုက်ရိုက် လောင်းကြေး',
@@ -244,8 +244,6 @@ const my: Record<TKey, string> = {
   houseRules: 'စည်းကမ်းချက်များ',
   prizePool: 'ဆုငွေအိတ်',
   houseFee: 'ပလက်ဖောင်း ကြေး',
-  jackpotFee: 'ဂျက်ပေါ့ ကြေး',
-  jackpotOdds: 'ဂျက်ပေါ့ အခွင့်အလမ်း',
   transactionHistory: 'ငွေလွှဲပြောင်းမှု မှတ်တမ်း',
   loading: 'ဖွင့်နေသည်…',
   noPaymentsYet: 'ငွေသွင်း / ငွေထုတ် မှတ်တမ်း မရှိသေးပါ။',

@@ -62,8 +62,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
       </div>
 
-      {/* Countdown Timer removed — now lives in the game tab between Jackpot and Pools */}
-
       {/* Balance & Top Up */}
       <div className="flex items-center gap-1.5">
         <button
@@ -93,7 +91,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </button>
 
         {/* Balance Badge */}
-        <div className="flex items-center gap-1 bg-[#0D1117] border border-[#30363D] px-2 py-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-[#0D1117] border border-amber-500/25 px-2 py-1 rounded-lg shadow-sm shadow-black/30">
           <Coins className="w-3.5 h-3.5 text-amber-400" />
           <span className="font-mono text-xs font-bold text-amber-400 tracking-tight">
             ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

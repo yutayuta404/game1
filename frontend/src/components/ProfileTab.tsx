@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coins, LogOut, Plus, Minus, User as UserIcon, Flame, Trophy, Zap, Globe } from 'lucide-react';
+import { Coins, LogOut, Plus, Minus, User as UserIcon, Flame, HandCoins, Globe } from 'lucide-react';
 import { sound } from '../utils/audio';
 import { api } from '../services/api';
 import { useLang, type Lang } from '../i18n';
@@ -8,6 +8,7 @@ interface ProfileTabProps {
   username: string;
   balance: number;
   withdrawable: number;
+  cashback: number;
   roundId: number;
   sessionBets: number;
   sessionStaked: number;
@@ -20,6 +21,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   username,
   balance,
   withdrawable,
+  cashback,
   roundId,
   sessionBets,
   sessionStaked,
@@ -28,7 +30,22 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onWithdraw,
 }) => {
   const [payments, setPayments] = useState<any[] | null>(null);
+  const [claiming, setClaiming] = useState(false);
   const { t, lang, setLang } = useLang();
+
+  const handleClaim = async () => {
+    if (claiming || cashback <= 0) return;
+    sound.playClick();
+    setClaiming(true);
+    try {
+      await api.claimCashback();
+      sound.playWin();
+    } catch {
+      /* stale amount — next refresh fixes it */
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +144,23 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           <p className="text-[9px] text-gray-500 leading-relaxed pt-0.5">
             {t('unlockHint')}
           </p>
+          {/* Pending cashback + claim */}
+          <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-[#30363D]/70">
+            <span className="text-[11px] font-mono text-gray-400 flex items-center gap-1">
+              <HandCoins className="w-3 h-3 text-emerald-400" /> {t('cashbackTitle')}
+            </span>
+            {cashback > 0 ? (
+              <button
+                onClick={handleClaim}
+                disabled={claiming}
+                className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[10px] px-2 py-0.5 rounded-md active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+              >
+                {t('cashbackClaim')} ${cashback.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </button>
+            ) : (
+              <span className="font-bold text-gray-500">$0.00</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -157,15 +191,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         </div>
         <div className="flex items-center justify-between text-[11px] font-mono">
           <span className="text-gray-400 flex items-center gap-1">
-            <Trophy className="w-3 h-3 text-amber-400" /> {t('jackpotFee')}
+            <HandCoins className="w-3 h-3 text-emerald-400" /> {t('cashbackRate')}
           </span>
-          <span className="font-bold text-amber-400">1%</span>
-        </div>
-        <div className="flex items-center justify-between text-[11px] font-mono">
-          <span className="text-gray-400 flex items-center gap-1">
-            <Zap className="w-3 h-3 text-amber-400" /> {t('jackpotOdds')}
-          </span>
-          <span className="font-bold text-emerald-400">{t('jackpotOddsVal')}</span>
+          <span className="font-bold text-emerald-400">1%</span>
         </div>
       </div>
 

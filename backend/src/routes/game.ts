@@ -81,10 +81,23 @@ router.post('/bet', authenticateToken, authAsyncHandler(async (req: Authenticate
 
   try {
     const result = await GameService.placeBet(req.user!.userId, { selection, amount });
-    res.json({ success: true, bet: result.bet, newBalance: result.newBalance, newWithdrawable: result.newWithdrawable });
+    res.json({ success: true, bet: result.bet, newBalance: result.newBalance, newWithdrawable: result.newWithdrawable, newCashback: result.newCashback });
   } catch (err: any) {
     if (err instanceof Error && err.message === 'No active round available') {
       return res.status(409).json({ error: 'Round just ended — try again in a moment' });
+    }
+    throw err;
+  }
+}));
+
+// ---- Cashback: claim the 1% accrued on your own bets ----
+router.post('/cashback/claim', authenticateToken, authAsyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await GameService.claimCashback(req.user!.userId);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    if (err instanceof Error && err.message.length < 120) {
+      return res.status(400).json({ error: err.message });
     }
     throw err;
   }

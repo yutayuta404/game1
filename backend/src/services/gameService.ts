@@ -4,9 +4,8 @@ import { SettleResult, RoundState, BetRequest } from '../types';
 
 const ROUND_DURATION = 60; // 60-second rounds
 const HOUSE_FEE_RATE = 0.10; // 10%
-const JACKPOT_FEE_RATE = 0.01; // 1%
+const CASHBACK_RATE = 0.01; // 1% of every stake back to the bettor (claimable)
 const NET_POOL_RATE = 0.89; // 89%
-const JACKPOT_ODDS = 2076; // 1 in 2,076
 
 export class GameService {
   static async getCurrentRound(): Promise<RoundState | null> {
@@ -62,7 +61,7 @@ export class GameService {
     };
   }
 
-  static async placeBet(userId: string, betData: BetRequest): Promise<{ bet: any; newBalance: number; newWithdrawable: number | null }> {
+  static async placeBet(userId: string, betData: BetRequest): Promise<{ bet: any; newBalance: number; newWithdrawable: number | null; newCashback: number }> {
     const now = Math.floor(Date.now() / 1000);
     
     const round = await prisma.round.findFirst({
@@ -148,24 +147,30 @@ export class GameService {
         }
       });
 
-      // Update global vault with fees
+      // Update global vault with house fee; the 1% cashback share accrues
+      // to the bettor's own claimable pot instead of a jackpot vault.
       const houseFee = betData.amount * HOUSE_FEE_RATE;
-      const jackpotFee = betData.amount * JACKPOT_FEE_RATE;
-      
+      const cashback = betData.amount * CASHBACK_RATE;
+
       await tx.globalVault.upsert({
         where: { id: 'singleton' },
         update: {
-          houseFeeBalance: { increment: houseFee },
-          jackpotVaultBalance: { increment: jackpotFee }
+          houseFeeBalance: { increment: houseFee }
         },
         create: {
           id: 'singleton',
           houseFeeBalance: houseFee,
-          jackpotVaultBalance: jackpotFee
+          jackpotVaultBalance: 0
         }
       });
 
-      return { bet, newBalance: updatedUser.balance, newWithdrawable: updatedUser.withdrawableBalance };
+      // Accrue cashback on the same user row we already updated.
+      await tx.user.update({
+        where: { id: userId },
+        data: { cashbackBalance: { increment: cashback } }
+      });
+
+      return { bet, newBalance: updatedUser.balance, newWithdrawable: updatedUser.withdrawableBalance, newCashback: user.cashbackBalance + cashback };
     });
 
     await prisma.auditEvent.create({
@@ -215,17 +220,12 @@ export class GameService {
 
     // Generate random winner (50/50)
     const winner = Math.random() < 0.5 ? WinnerSide.MESSI : WinnerSide.RONALDO;
-    
-    // Check for jackpot (1 in 2,076)
-    const jackpotRoll = Math.floor(Math.random() * JACKPOT_ODDS) + 1;
-    const jackpotHit = jackpotRoll === 1;
 
-    // Get jackpot vault balance
-    const vault = await prisma.globalVault.findUnique({ where: { id: 'singleton' } });
-    const jackpotVaultBalance = vault?.jackpotVaultBalance || 0;
-    const jackpotWonAmount = jackpotHit ? jackpotVaultBalance : 0;
+    // Jackpot system removed — the 1% now goes to bettors as claimable cashback.
+    const jackpotHit = false;
+    const jackpotWonAmount = 0;
 
-    // Calculate net prize pool (97% of total bets)
+    // Calculate net prize pool (89% of total bets)
     const netBasePool = totalPool * NET_POOL_RATE;
     const totalWinningPool = netBasePool + jackpotWonAmount;
 
@@ -287,14 +287,6 @@ export class GameService {
           jackpotWonAmount
         }
       });
-
-      // Reset jackpot vault if hit
-      if (jackpotHit) {
-        await tx.globalVault.update({
-          where: { id: 'singleton' },
-          data: { jackpotVaultBalance: 0 }
-        });
-      }
 
       // Create next round
       await this.createNewRound();
@@ -408,6 +400,60 @@ export class GameService {
         payout: b.amount // full refund
       }))
     };
+  }
+
+  /**
+   * Claim accrued cashback: moves the pending pot into spendable AND
+   * withdrawable balance (it is real house money, unlike the locked signup
+   * bonus), then zeroes the pot.
+   */
+  static async claimCashback(userId: string): Promise<{ claimed: number; newBalance: number; newWithdrawable: number }> {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        if (!user) throw new Error('User not found');
+
+        const claimed = user.cashbackBalance;
+        if (claimed <= 0) throw new Error('No cashback available to claim');
+
+        // Guarded on the pending amount so a concurrent double-claim finds
+        // no matching row and rolls back instead of crediting twice.
+        const updated = await tx.user.update({
+          where: { id: userId, cashbackBalance: claimed },
+          data: {
+            balance: { increment: claimed },
+            withdrawableBalance: { increment: claimed },
+            cashbackBalance: 0
+          }
+        });
+
+        await tx.ledgerTransaction.create({
+          data: {
+            userId,
+            amount: claimed,
+            type: TransactionType.CASHBACK,
+            referenceId: 'cashback-claim'
+          }
+        });
+
+        await prisma.auditEvent.create({
+          data: {
+            userId,
+            username: user.username,
+            type: 'CASHBACK_CLAIM',
+            detail: JSON.stringify({ claimed, newBalance: updated.balance, newWithdrawable: updated.withdrawableBalance })
+          }
+        });
+
+        return { claimed, newBalance: updated.balance, newWithdrawable: updated.withdrawableBalance };
+      });
+    } catch (err: any) {
+      // Concurrent claim already zeroed the pot (Prisma P2025 record-not-found)
+      if (String(err?.code) === 'P2025') {
+        throw new Error('No cashback available to claim');
+      }
+      throw err;
+    }
   }
 
   static async getUserBets(userId: string, roundId?: string) {

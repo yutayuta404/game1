@@ -3,6 +3,7 @@ export interface User {
   username: string;
   balance: number;
   withdrawableBalance: number;
+  cashbackBalance: number;
   createdAt: string;
 }
 

@@ -18,7 +18,7 @@ export const LiveBetsCard: React.FC<LiveBetsCardProps> = ({ bets, max = 6 }) => 
         <div className="flex items-center gap-1.5">
           <Activity className="w-3.5 h-3.5 text-emerald-400" />
           <span className="text-xs font-bold text-gray-200 tracking-tight">{t('liveBets')}</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot ml-0.5" />
         </div>
         <span className="text-[10px] font-mono text-gray-400">
           {bets.length === 1 ? t('betThisRound', { n: bets.length }) : t('betsThisRound', { n: bets.length })}

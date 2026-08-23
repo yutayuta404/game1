@@ -18,7 +18,7 @@ export const HistoryRibbon: React.FC<HistoryRibbonProps> = ({ history }) => {
   const messiPct = Math.round((messiWins / total) * 100);
 
   return (
-    <div className="w-full bg-[#11161D] border-b border-[#30363D] py-1.5 px-3 select-none">
+    <div className="w-full bg-[#11161D]/90 backdrop-blur-sm border-b border-[#30363D] py-1.5 px-3 select-none">
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
           <History className="w-3 h-3 text-gray-400" />

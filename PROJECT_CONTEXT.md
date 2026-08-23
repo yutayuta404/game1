@@ -529,6 +529,15 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - Admin panel: purple BOT badge next to bot usernames in Users list, Live Activity feed, and Inspect modal (`isBot` field on User schema)
 - Verified locally: bots bet every round (clean amounts, ≤4/round), settlements pay them normally (e.g. kyaw_golfer 1700 → WIN payout 4539)
 
+### Jackpot removed → 1% claimable cashback (2026-08-23)
+- **Jackpot system is OFF**: no more 1-in-2076 roll; `settleRound` pays winners from the plain 89% net pool (`jackpotHit=false, jackpotWonAmount=0` written for schema compat). Round/Bet jackpot DB fields intentionally KEPT — prod start command runs `db push --accept-data-loss`, so dropping columns would destroy data
+- **1% of every stake now accrues to the bettor** as `User.cashbackBalance` (pending pot) instead of the global jackpot vault. House still nets 10% per bet
+- **Claim flow**: `POST /api/game/cashback/claim` → atomic guarded tx zeroes the pot and credits claimed amount to BOTH `balance` and `withdrawableBalance` (real money, unlike locked signup bonus); ledger type `CASHBACK` (`referenceId:'cashback-claim'`) + audit `CASHBACK_CLAIM`. Double-claim safe (guarded update + P2025 → friendly 400)
+- `/auth/me` now returns `cashbackBalance`; `/game/bet` response includes `newCashback`
+- Frontend: `CashbackCard.tsx` replaced `JackpotPot` on game tab (emerald theme, polls /me every 5s, CLAIM button w/ haptics); ProfileTab shows pending cashback row + claim button in balance card, house rules now "Prize pool 89% / House fee 10% / Your cashback 1%"; i18n keys cashback* (EN+MY)
+- ⚠️ Old jackpot vault money (~32.8k at removal time) sits frozen in `GlobalVault.jackpotVaultBalance` — visible in admin, sweep into house fees whenever owner decides
+- Verified end-to-end: bet 50 → newCashback 0.5 → claim → balance/withdrawable +0.5, CASHBACK ledger row written, second claim rejected
+
 
 **Verify health (30s):**
 ```bash

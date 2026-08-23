@@ -89,7 +89,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   const autoStartable = phase === 'betting' && autoRoundsNum >= 1 && autoCost <= balance && !autoBet;
 
   return (
-    <div className="w-full bg-[#161B22] border border-[#30363D] rounded-xl p-3 shadow-lg select-none space-y-2.5">
+    <div className="w-full bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg select-none space-y-2.5">
       {/* Current Active Round Bet Notification if user already bet */}
       {userCurrentBet && (
         <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-lg p-2 flex items-center justify-between text-xs font-mono text-emerald-300 animate-in fade-in">
@@ -123,7 +123,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
             onChange={handleCustomChange}
             disabled={phase !== 'betting'}
             placeholder={t('amountPlaceholder')}
-            className="w-full pl-7 pr-3 py-1.5 bg-[#0D1117] border border-[#30363D] rounded-lg text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-400 disabled:opacity-50"
+            className="w-full pl-7 pr-3 py-1.5 bg-[#0D1117] border border-[#30363D] rounded-lg text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/30 transition-shadow disabled:opacity-50"
           />
         </div>
 

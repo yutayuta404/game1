@@ -39,7 +39,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
   return (
     <nav
       id="bottom-nav-bar"
-      className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#161B22] border-t border-[#30363D] flex justify-around py-2.5 px-3 z-50 select-none shadow-2xl shadow-black/80 pb-[calc(0.625rem+env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#161B22]/95 backdrop-blur-md border-t border-white/10 flex justify-around py-2.5 px-3 z-50 select-none shadow-2xl shadow-black/80"
       style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom))' }}
     >
       {tabs.map((tab) => {
@@ -61,10 +61,12 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            {/* Active Pill Indicator */}
-            {isActive && (
-              <span className="absolute -top-2.5 w-8 h-1 bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full shadow-sm shadow-amber-500/50" />
-            )}
+            {/* Active Pill Indicator — kept mounted for smooth transitions */}
+            <span
+              className={`absolute -top-2.5 w-8 h-1 bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full shadow-sm shadow-amber-500/50 transition-all duration-200 ${
+                isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+              }`}
+            />
 
             <div className="relative">
               <Icon

@@ -5,7 +5,7 @@ import { CountdownTimer } from '../components/CountdownTimer';
 import { HistoryRibbon } from '../components/HistoryRibbon';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { PoolBar } from '../components/PoolBar';
-import { JackpotPot } from '../components/JackpotPot';
+import { CashbackCard } from '../components/CashbackCard';
 import { LiveBetsCard } from '../components/LiveBetsCard';
 import { ProfileTab } from '../components/ProfileTab';
 import { BallDropCanvas } from '../components/BallDropCanvas';
@@ -381,6 +381,7 @@ export default function GamePage() {
   const serverDeadlineRef = useRef<number>(0);
   const serverRoundIdRef = useRef<string>('');
   const pendingDropRoundRef = useRef<string | null>(null);
+  const witnessedRoundRef = useRef<string>('');
   const settlePayoutRef = useRef<number | null>(null);
   const seenResultIdRef = useRef<string>('');
   const [forcedWinner, setForcedWinner] = useState<TeamSide | null>(null);
@@ -391,7 +392,22 @@ export default function GamePage() {
 
     const applyResult = (lastResult: any) => {
       if (!lastResult || lastResult.roundId === seenResultIdRef.current) return;
-      if (phaseRef.current === 'dropping' && pendingDropRoundRef.current === lastResult.roundId) {
+
+      // Verdict may land BEFORE our local countdown notices the deadline
+      // (server clock ahead, throttled background timers). If it's for the
+      // round we just watched, jump straight into the drop — otherwise the
+      // rush poll would dismiss it as already-seen and the ball would never
+      // spawn, leaving the UI stuck without a result popup.
+      if (
+        phaseRef.current === 'betting' &&
+        witnessedRoundRef.current === lastResult.roundId &&
+        lastResult.winner
+      ) {
+        pendingDropRoundRef.current = lastResult.roundId;
+        settlePayoutRef.current = lastResult.myPayout ?? null;
+        setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+        setPhase('dropping');
+      } else if (phaseRef.current === 'dropping' && pendingDropRoundRef.current === lastResult.roundId) {
         settlePayoutRef.current = lastResult.myPayout;
         setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
       }
@@ -402,6 +418,13 @@ export default function GamePage() {
       try {
         const { round, userBet, lastResult } = await api.getCurrentRound();
         if (stopped) return;
+        // Remember which round we are actually watching live while betting,
+        // so a verdict that races ahead of the countdown can be attributed.
+        if (phaseRef.current === 'betting' && round.id !== serverRoundIdRef.current) {
+          witnessedRoundRef.current = round.id;
+          pendingDropRoundRef.current = null;
+          settlePayoutRef.current = null;
+        }
         setMessiPool(round.totalMessi || 0);
         setRonaldoPool(round.totalRonaldo || 0);
         serverDeadlineRef.current = round.endTimestamp * 1000;
@@ -449,15 +472,40 @@ export default function GamePage() {
     const rush = setInterval(async () => {
       try {
         const { lastResult } = await api.getCurrentRound();
-        if (!lastResult || lastResult.roundId === seenResultIdRef.current) return;
-        if (pendingDropRoundRef.current === lastResult.roundId) {
-          settlePayoutRef.current = lastResult.myPayout;
+        if (!lastResult) return;
+        seenResultIdRef.current = lastResult.roundId;
+        // Apply the verdict for the round we're dropping on — idempotent,
+        // and NOT gated on the seen-guard so a pre-seen result still lands.
+        if (pendingDropRoundRef.current === lastResult.roundId && lastResult.winner) {
+          if (settlePayoutRef.current === null || settlePayoutRef.current === undefined) {
+            settlePayoutRef.current = lastResult.myPayout;
+          }
           setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
         }
-        seenResultIdRef.current = lastResult.roundId;
       } catch { /* keep waiting */ }
     }, 1200);
-    return () => clearInterval(rush);
+
+    // Failsafe: if no verdict ever arrives (backend unreachable), move on
+    // after 15s instead of hanging on SETTLING forever.
+    const failsafe = setTimeout(() => {
+      if (phaseRef.current !== 'dropping') return;
+      setResultModal(null);
+      setRoundId((prev) => prev + 1);
+      setPhase('betting');
+      setTimeLeft(60);
+      setUserCurrentBet(null);
+      setActiveBets([]);
+      setMessiPool(0);
+      setRonaldoPool(0);
+      setForcedWinner(null);
+      pendingDropRoundRef.current = null;
+      settlePayoutRef.current = null;
+    }, 15000);
+
+    return () => {
+      clearInterval(rush);
+      clearTimeout(failsafe);
+    };
   }, [phase]);
 
   // Ball Drop Landing Callback — winner & payout come from the SERVER
@@ -608,8 +656,8 @@ export default function GamePage() {
           {/* GAME TAB */}
           {activeTab === 'game' && (
             <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-2.5 pb-20 no-scrollbar">
-              {/* Live Jackpot Pot ticker */}
-              <JackpotPot />
+              {/* Claimable cashback (1% of your bets) */}
+              <CashbackCard onClaimed={refreshAuth} />
 
               {/* Countdown timer + progress bar */}
               <CountdownTimer timeLeft={timeLeft} phase={phase} />
@@ -656,6 +704,7 @@ export default function GamePage() {
               username={user?.username || ''}
               balance={balance}
               withdrawable={withdrawable}
+              cashback={user?.cashbackBalance ?? 0}
               roundId={roundId}
               sessionBets={activeBets.filter((b) => b.isUser).length}
               sessionStaked={activeBets.filter((b) => b.isUser).reduce((s, b) => s + b.amount, 0)}

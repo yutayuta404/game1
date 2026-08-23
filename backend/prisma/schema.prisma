@@ -18,6 +18,7 @@ enum TransactionType {
   WIN
   REFUND
   WITHDRAW
+  CASHBACK
 }
 
 enum RoundStatus {
@@ -57,6 +58,8 @@ model User {
   bonusLocked         Float    @default(0)
   // House-run simulated player (activity/liquidity seeding). Never a real depositor.
   isBot               Boolean  @default(false)
+  // Unclaimed 1%-of-stake cashback. Claimed funds land in balance+withdrawable.
+  cashbackBalance     Float    @default(0)
   createdAt           DateTime @default(now())
   bets                Bet[]
   transactions        LedgerTransaction[]

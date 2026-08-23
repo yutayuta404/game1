@@ -87,10 +87,16 @@ class ApiService {
     return this.request<{ round: any; userBet: any; lastResult: any }>('/game/round');
   }
 
-  async placeBet(selection: 'MESSI' | 'RONALDO', amount: number): Promise<{ success: boolean; bet: any; newBalance: number }> {
-    return this.request<{ success: boolean; bet: any; newBalance: number }>('/game/bet', {
+  async placeBet(selection: 'MESSI' | 'RONALDO', amount: number): Promise<{ success: boolean; bet: any; newBalance: number; newCashback?: number }> {
+    return this.request<{ success: boolean; bet: any; newBalance: number; newCashback?: number }>('/game/bet', {
       method: 'POST',
       body: JSON.stringify({ selection, amount }),
+    });
+  }
+
+  async claimCashback(): Promise<{ success: boolean; claimed: number; newBalance: number; newWithdrawable: number }> {
+    return this.request<{ success: boolean; claimed: number; newBalance: number; newWithdrawable: number }>('/game/cashback/claim', {
+      method: 'POST',
     });
   }
 

@@ -12,6 +12,35 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* ---- Micro-design system: entrance motion (tailwindcss-animate subset) ----
+     Used across modals/toasts: "animate-in fade-in [zoom-in-95]".
+     Pure-opacity variant avoids clobbering transforms (e.g. centered toasts). */
+  @keyframes oxFadeZoomIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes oxFadeOnly {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .animate-in {
+    animation-duration: 200ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: both;
+  }
+  .fade-in { animation-name: oxFadeOnly; }
+  .animate-in.fade-in.zoom-in-95 {
+    animation-name: oxFadeZoomIn;
+    animation-duration: 180ms;
+  }
+
+  /* Soft glow pulse for live indicators */
+  @keyframes oxGlowPulse {
+    0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+    50%      { box-shadow: 0 0 6px 1px currentColor; opacity: 0.75; }
+  }
+  .live-dot { animation: oxGlowPulse 2s ease-in-out infinite; }
 }
 
 html, body {
