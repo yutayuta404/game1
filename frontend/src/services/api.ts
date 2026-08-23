@@ -63,6 +63,15 @@ class ApiService {
     return data;
   }
 
+  async loginTelegram(initData: string): Promise<{ user: any; token: string }> {
+    const data = await this.request<{ user: any; token: string }>('/auth/telegram', {
+      method: 'POST',
+      body: JSON.stringify({ initData }),
+    });
+    this.setToken(data.token);
+    return data;
+  }
+
   async getMe(): Promise<{ user: any }> {
     return this.request<{ user: any }>('/auth/me');
   }

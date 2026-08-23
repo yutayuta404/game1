@@ -1,12 +1,40 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { generateToken } from '../middleware/auth';
+import { verifyInitData, telegramUsername } from '../lib/telegram';
 
 const router = Router();
 
 const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => 
   (req: Request, res: Response, next: NextFunction) => 
     Promise.resolve(fn(req, res, next)).catch(next);
+
+router.post('/telegram', asyncHandler(async (req: Request, res: Response) => {
+  const { initData } = req.body || {};
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    return res.status(503).json({ error: 'Telegram login not configured' });
+  }
+
+  const { ok, user: tgUser } = verifyInitData(initData, botToken);
+  if (!ok || !tgUser) {
+    return res.status(401).json({ error: 'Invalid Telegram initData' });
+  }
+
+  const username = telegramUsername(tgUser);
+
+  let user = await prisma.user.findUnique({ where: { username } });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: { username, balance: 100 }
+    });
+  }
+
+  const token = generateToken(user.id, user.username);
+  res.json({ user: { id: user.id, username: user.username, balance: user.balance, withdrawableBalance: user.withdrawableBalance }, token });
+}));
 
 router.post('/login', asyncHandler(async (req: Request, res: Response) => {
   const { username } = req.body;

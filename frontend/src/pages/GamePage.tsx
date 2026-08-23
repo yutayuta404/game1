@@ -14,7 +14,7 @@ import { PaymentFormModal } from '../components/PaymentFormModal';
 import { RoundResultModal } from '../components/RoundResultModal';
 import { sound } from '../utils/audio';
 import { useAuth } from '../hooks/useAuth';
-import { getTelegramUsername, hapticSuccess, hapticWarning } from '../utils/telegram';
+import { getInitData, getTelegramUsername, hapticSuccess, hapticWarning } from '../utils/telegram';
 import { api } from '../services/api';
 
 // Initial Mock Seed Data
@@ -48,7 +48,7 @@ const CHAT_SEED: ChatMessage[] = [
   {
     id: 'c-1',
     type: 'system',
-    text: 'Welcome to Clash Drop! Pick your side: Team Messi vs Team Ronaldo. 30s per round!',
+    text: 'Welcome to 0XDUEL! Pick your side: Team Messi vs Team Ronaldo. 30s per round!',
     timestamp: Date.now() - 60000,
   },
   {
@@ -78,7 +78,7 @@ const CHAT_SEED: ChatMessage[] = [
 ];
 
 export default function GamePage() {
-  const { user, loading: authLoading, login, logout, updateBalance, refresh: refreshAuth } = useAuth();
+  const { user, loading: authLoading, login, loginTelegram, logout, updateBalance, refresh: refreshAuth } = useAuth();
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<TabType>('game');
@@ -199,12 +199,18 @@ export default function GamePage() {
   const tgAutoLoginRef = useRef(false);
   useEffect(() => {
     if (tgAutoLoginRef.current || authLoading || user) return;
+    const initData = getInitData();
+    if (initData) {
+      tgAutoLoginRef.current = true;
+      loginTelegram(initData);
+      return;
+    }
     const tgName = getTelegramUsername();
     if (tgName) {
       tgAutoLoginRef.current = true;
       login(tgName);
     }
-  }, [authLoading, user, login]);
+  }, [authLoading, user, login, loginTelegram]);
 
   // Sound Toggle Handler
   const handleToggleSound = () => {
@@ -524,8 +530,8 @@ export default function GamePage() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-600 via-amber-500 to-red-600 flex items-center justify-center">
               <span className="text-2xl">⚽</span>
             </div>
-            <h1 className="text-2xl font-extrabold text-white mb-1">CLASH<span className="text-amber-400">DROP</span></h1>
-            <p className="text-gray-400 text-sm">5-Minute Pool Prediction Game</p>
+            <h1 className="text-2xl font-extrabold text-white mb-1">0X<span className="text-amber-400">DUEL</span></h1>
+            <p className="text-gray-400 text-sm">Messi vs Ronaldo — 30s Prediction Duels</p>
           </div>
           <div className="space-y-4">
             <input

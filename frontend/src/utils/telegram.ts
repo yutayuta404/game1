@@ -57,6 +57,15 @@ export function getTelegramUsername(): string | null {
   }
 }
 
+/** Raw signed initData string for server-side verification. Empty outside Telegram. */
+export function getInitData(): string {
+  try {
+    return tg()?.initData || '';
+  } catch {
+    return '';
+  }
+}
+
 /** Light impact — tabs, preset chips, toggles. */
 export function hapticLight(): void {
   try {

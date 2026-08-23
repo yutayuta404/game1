@@ -44,6 +44,21 @@ export function useAuth() {
     }
   };
 
+  const loginTelegram = async (initData: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { user } = await api.loginTelegram(initData);
+      setUser(user);
+      return { success: true };
+    } catch (err: any) {
+      setError(err.message);
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     api.setToken(null);
     setUser(null);
@@ -53,5 +68,5 @@ export function useAuth() {
     setUser((prev: User | null) => prev ? { ...prev, balance: newBalance } : null);
   };
 
-  return { user, loading, error, login, logout, updateBalance, refresh: loadUser };
+  return { user, loading, error, login, loginTelegram, logout, updateBalance, refresh: loadUser };
 }
