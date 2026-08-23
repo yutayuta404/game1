@@ -28,6 +28,16 @@ export class GameService {
 
   static async createNewRound(): Promise<any> {
     const now = Math.floor(Date.now() / 1000);
+
+    // Idempotency guard: a concurrent getCurrentRound fallback racing the
+    // settler's next-round creation could otherwise spawn overlapping
+    // ACTIVE rounds (two deadlines = broken countdowns).
+    const existing = await prisma.round.findFirst({
+      where: { status: RoundStatus.ACTIVE, endTimestamp: { gt: now } },
+      orderBy: { startTimestamp: 'desc' }
+    });
+    if (existing) return existing;
+
     const startTimestamp = now;
     const endTimestamp = now + ROUND_DURATION;
 
@@ -42,6 +52,43 @@ export class GameService {
     });
 
     return round;
+  }
+
+  /**
+   * Boot-time janitor: stray ACTIVE rounds accumulate from restarts/races
+   * and each carries a phantom deadline that hijacks GET /round (countdown
+   * jumps upward). Keep the newest unexpired round; cancel the rest if they
+   * carry no bets. Expired rounds with bets are left for the settler to
+   * refund/cancel properly.
+   */
+  static async cleanupStrayRounds(): Promise<number> {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const actives = await prisma.round.findMany({
+        where: { status: RoundStatus.ACTIVE },
+        orderBy: { startTimestamp: 'desc' },
+      });
+      if (actives.length <= 1) return 0;
+
+      const keep = actives.find((r) => r.endTimestamp > now);
+      let cancelled = 0;
+      for (const r of actives) {
+        if (keep && r.id === keep.id) continue;
+        const betCount = await prisma.bet.count({ where: { roundId: r.id } });
+        if (betCount === 0) {
+          await prisma.round.update({
+            where: { id: r.id },
+            data: { status: RoundStatus.CANCELLED },
+          });
+          cancelled++;
+        }
+      }
+      if (cancelled > 0) console.log(`[cleanup] cancelled ${cancelled} stray ACTIVE rounds`);
+      return cancelled;
+    } catch (err) {
+      console.error('[cleanup] stray-round sweep failed:', err);
+      return 0;
+    }
   }
 
   static formatRoundState(round: any, now: number): RoundState {

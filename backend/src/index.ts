@@ -46,6 +46,10 @@ async function startServer() {
       console.log(`Server running on http://localhost:${PORT}`);
     });
 
+    // One-shot janitor: cancel stray ACTIVE rounds left by restarts/races
+    // (phantom deadlines break the client countdown).
+    void GameService.cleanupStrayRounds();
+
     // Authoritative settlement loop: settle any expired round every 3s
     setInterval(async () => {
       try {

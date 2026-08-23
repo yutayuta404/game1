@@ -428,8 +428,20 @@ export default function GamePage() {
         setMessiPool(round.totalMessi || 0);
         setRonaldoPool(round.totalRonaldo || 0);
         serverDeadlineRef.current = round.endTimestamp * 1000;
+
+        // Countdown must be MONOTONIC within a round: device clocks drift
+        // against the server, and re-deriving timeLeft from the raw
+        // timestamp each poll can add skew-seconds back (countdown crawling
+        // upward / snapping to :59 mid-round). Only a genuinely new round
+        // may raise the timer.
+        const isNewRound = round.id !== serverRoundIdRef.current;
+        const serverSecs = Math.max(0, Math.ceil((round.endTimestamp * 1000 - Date.now()) / 1000));
+        if (isNewRound) {
+          setTimeLeft(serverSecs);
+        } else {
+          setTimeLeft((prev) => Math.min(prev, serverSecs));
+        }
         serverRoundIdRef.current = round.id;
-        setTimeLeft(Math.max(0, Math.ceil((round.endTimestamp * 1000 - Date.now()) / 1000)));
 
         // Restore an open bet placed earlier in this round (e.g. after reload)
         if (userBet && !userCurrentBetRef.current && phaseRef.current === 'betting') {
