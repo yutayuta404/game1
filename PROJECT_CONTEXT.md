@@ -8,7 +8,7 @@
 - **UI**: Rebuilt around an AI Studio "clash-ball-drop" mobile design — dark theme (`#05070A`/`#0D1117`/`#161B22` cards, amber accents), bottom tab nav, player cutout buttons
 - **Fee structure**: **10% house fee, 1% jackpot fee (1-in-2,076 chance per round), 89% winner pool**
 - **Off-chain**: Non-custodial balance system with manual admin top-ups
-- **Withdrawal model**: Split balances — `balance` (spendable) vs `withdrawableBalance`. Funds are LOCKED until wagered: every $1 bet unlocks $1 for withdrawal (capped at balance). Wins/refunds credit both.
+- **Withdrawal model (FIXED 2026-08-23)**: `balance` (spendable) vs `withdrawableBalance`. **Stakes NEVER create withdrawable** — only settlement payouts (WIN credits both), uncontested-round REFUNDs, and rejected-withdrawal refunds touch withdrawable. Top-ups/admin credits stay locked until won. (Old rule "every $1 bet unlocks $1" was exploitable via hedging — removed.)
 - **Settlement**: Local demo engine settles each round automatically in the UI (ball lands → result modal → next round). Backend `POST /settle` remains permissionless but is not called by the current UI flow.
 - **Jackpot**: Accumulates 1% of all bets; 1 in 2,076 chance per settle; full vault paid to winners, then reset
 - **Auto-Bet**: Prepay up to 1,440 rounds
