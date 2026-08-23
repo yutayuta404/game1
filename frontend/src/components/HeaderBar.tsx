@@ -1,11 +1,9 @@
 import React from 'react';
-import { Coins, Plus, Volume2, VolumeX, Flame, Zap } from 'lucide-react';
+import { Coins, Plus, Volume2, VolumeX, Flame } from 'lucide-react';
 import { sound } from '../utils/audio';
 
 interface HeaderBarProps {
   roundId: number;
-  timeLeft: number;
-  phase: 'betting' | 'dropping' | 'finished';
   balance: number;
   onOpenTopUp: () => void;
   soundEnabled: boolean;
@@ -14,17 +12,11 @@ interface HeaderBarProps {
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   roundId,
-  timeLeft,
-  phase,
   balance,
   onOpenTopUp,
   soundEnabled,
   onToggleSound,
 }) => {
-  const isUrgent = timeLeft <= 5 && phase === 'betting';
-  const isDropping = phase === 'dropping';
-  const pct = Math.max(0, Math.min(100, (timeLeft / 30) * 100));
-
   return (
     <>
     <header className="w-full bg-[#161B22]/95 backdrop-blur-md border-b border-[#30363D] px-3 py-2.5 flex items-center justify-between sticky top-0 z-40 select-none">
@@ -45,36 +37,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
       </div>
 
-      {/* Countdown Timer */}
-      <div className="flex items-center justify-center">
-        <div
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono font-bold transition-all ${
-            isDropping
-              ? 'bg-amber-500/20 border-amber-400 text-amber-300 animate-pulse ring-2 ring-amber-400/30'
-              : isUrgent
-              ? 'bg-red-500/20 border-red-500 text-red-400 animate-bounce'
-              : 'bg-[#0D1117] border-[#30363D] text-gray-200'
-          }`}
-        >
-          {isDropping ? (
-            <span className="tracking-wide text-[11px] font-sans font-black text-amber-300 flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span>DROPPING</span>
-            </span>
-          ) : (
-            <>
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isUrgent ? 'bg-red-400 animate-ping' : 'bg-emerald-400'
-                }`}
-              />
-              <span className="text-xs">
-                00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+      {/* Countdown Timer removed — now lives in the game tab between Jackpot and Pools */}
 
       {/* Balance & Top Up */}
       <div className="flex items-center gap-1.5">
@@ -111,24 +74,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </button>
       </div>
     </header>
-
-    {/* Countdown progress bar */}
-    <div className="w-full h-[4px] bg-[#0D1117] overflow-hidden border-b border-[#30363D]/60">
-      {isDropping ? (
-        <div className="h-full w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-pulse" />
-      ) : (
-        <div
-          className={`h-full transition-all duration-1000 ease-linear ${
-            isUrgent
-              ? 'bg-red-500'
-              : timeLeft <= 10
-              ? 'bg-gradient-to-r from-red-400 to-amber-400'
-              : 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-          }`}
-          style={{ width: `${pct}%` }}
-        />
-      )}
-    </div>
     </>
   );
 };

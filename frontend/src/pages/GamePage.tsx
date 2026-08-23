@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TabType, TeamSide, RoundHistoryItem, BetItem, ChatMessage } from '../types/clash';
 import { HeaderBar } from '../components/HeaderBar';
+import { CountdownTimer } from '../components/CountdownTimer';
 import { HistoryRibbon } from '../components/HistoryRibbon';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { PoolBar } from '../components/PoolBar';
@@ -571,8 +572,6 @@ export default function GamePage() {
         {/* 1. Persistent Header Bar */}
         <HeaderBar
           roundId={roundId}
-          timeLeft={timeLeft}
-          phase={phase}
           balance={balance}
           onOpenTopUp={() => setPaymentModal('topup')}
           soundEnabled={soundEnabled}
@@ -589,6 +588,9 @@ export default function GamePage() {
             <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-2.5 pb-20 no-scrollbar">
               {/* Live Jackpot Pot ticker */}
               <JackpotPot />
+
+              {/* Countdown timer + progress bar */}
+              <CountdownTimer timeLeft={timeLeft} phase={phase} />
 
               {/* Dual-colored Pool Bar */}
               <PoolBar messiPool={messiPool} ronaldoPool={ronaldoPool} />
