@@ -48,6 +48,13 @@ class ApiService {
     }
 
     if (!response.ok) {
+      // Dead/expired session on a protected route: drop the token and let the app recover
+      // (page reload triggers Telegram auto-login or shows the login screen).
+      if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+        this.setToken(null);
+        setTimeout(() => window.location.reload(), 1200);
+        throw new Error('Session expired — signing you back in…');
+      }
       throw new Error(data.error || `Request failed (${response.status})`);
     }
 
