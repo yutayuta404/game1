@@ -173,4 +173,24 @@ router.get('/history', asyncHandler(async (req: Request, res: Response) => {
   });
 }));
 
+// ---- Client-reported lifecycle events (auto-bet start/cancel) for the audit trail ----
+const ALLOWED_AUDIT_TYPES = ['AUTO_START', 'AUTO_CANCEL'];
+
+router.post('/audit', authenticateToken, authAsyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { type, detail } = req.body || {};
+  if (!ALLOWED_AUDIT_TYPES.includes(type)) {
+    return res.status(400).json({ error: 'Unknown event type' });
+  }
+  const safe = typeof detail === 'object' && detail !== null ? detail : {};
+  const message = await prisma.auditEvent.create({
+    data: {
+      userId: req.user!.userId,
+      username: req.user!.username,
+      type,
+      detail: JSON.stringify(safe),
+    },
+  });
+  res.json({ success: true, id: message.id });
+}));
+
 export default router;

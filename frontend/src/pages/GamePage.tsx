@@ -42,9 +42,9 @@ export default function GamePage() {
   // Round State
   const [roundId, setRoundId] = useState<number>(1042);
   const [phase, setPhase] = useState<'betting' | 'dropping' | 'finished'>('betting');
-  const [timeLeft, setTimeLeft] = useState<number>(28);
-  const [messiPool, setMessiPool] = useState<number>(3420);
-  const [ronaldoPool, setRonaldoPool] = useState<number>(2890);
+  const [timeLeft, setTimeLeft] = useState<number>(60);
+  const [messiPool, setMessiPool] = useState<number>(0);
+  const [ronaldoPool, setRonaldoPool] = useState<number>(0);
 
   // User Active Bet on this round
   const [userCurrentBet, setUserCurrentBet] = useState<{
@@ -204,6 +204,7 @@ export default function GamePage() {
     // Escrow ALL rounds upfront
     setBalance((b) => b - total);
     setAutoBet({ side, amount: amt, remaining: n });
+    api.reportAudit('AUTO_START', { side, amount: amt, rounds: n, totalCost: total });
   };
 
   const cancelAuto = () => {
@@ -212,6 +213,12 @@ export default function GamePage() {
       // Refund only unplaced rounds — current round funds stay committed
       const refund = ab.remaining * ab.amount;
       if (refund > 0) setBalance((b) => b + refund);
+      api.reportAudit('AUTO_CANCEL', {
+        side: ab.side,
+        amountPerRound: ab.amount,
+        refundedRounds: ab.remaining,
+        refundAmount: refund,
+      });
       return null;
     });
   };
@@ -387,19 +394,15 @@ export default function GamePage() {
       setResultModal(null);
       setRoundId((prev) => prev + 1);
       setPhase('betting');
-      setTimeLeft(30);
+      setTimeLeft(60);
       setUserCurrentBet(null);
       setActiveBets([]);
-
-      // Generate realistic initial simulated seeds for next round
-      const seedMessi = 2200 + Math.floor(Math.random() * 2000);
-      const seedRonaldo = 2000 + Math.floor(Math.random() * 2000);
-      setMessiPool(seedMessi);
-      setRonaldoPool(seedRonaldo);
+      setMessiPool(0);
+      setRonaldoPool(0);
     }, 4500);
   }, []);
 
-  // Main 30-Second Countdown & Round Engine
+  // Main 60-Second Countdown & Round Engine
   useEffect(() => {
     const timer = setInterval(() => {
       if (phaseRef.current === 'betting') {

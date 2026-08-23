@@ -34,6 +34,12 @@ router.post('/telegram', asyncHandler(async (req: Request, res: Response) => {
 
   const token = generateToken(user.id, user.username);
   res.json({ user: { id: user.id, username: user.username, balance: user.balance, withdrawableBalance: user.withdrawableBalance }, token });
+
+  try {
+    await prisma.auditEvent.create({
+      data: { userId: user.id, username: user.username, type: 'LOGIN_TELEGRAM', detail: JSON.stringify({ tgId: tgUser.id, hasUsername: Boolean(tgUser.username) }) }
+    });
+  } catch { /* audit must not block auth */ }
 }));
 
 router.post('/login', asyncHandler(async (req: Request, res: Response) => {
@@ -60,6 +66,12 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
 
   const token = generateToken(user.id, user.username);
   res.json({ user: { id: user.id, username: user.username, balance: user.balance, withdrawableBalance: user.withdrawableBalance }, token });
+
+  try {
+    await prisma.auditEvent.create({
+      data: { userId: user.id, username: user.username, type: 'LOGIN', detail: JSON.stringify({ via: 'username' }) }
+    });
+  } catch { /* audit must not block auth */ }
 }));
 
 router.get('/me', asyncHandler(async (req: Request, res: Response) => {

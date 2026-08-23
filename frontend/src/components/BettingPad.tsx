@@ -37,11 +37,11 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   const [autoRounds, setAutoRounds] = useState<string>('10');
 
   const totalPool = messiPool + ronaldoPool;
-  const messiMultiplier = messiPool > 0 ? (totalPool * 0.96) / messiPool : 1.92;
-  const ronaldoMultiplier = ronaldoPool > 0 ? (totalPool * 0.96) / ronaldoPool : 1.92;
+  const messiMultiplier = messiPool > 0 ? (totalPool * 0.96) / messiPool : null;
+  const ronaldoMultiplier = ronaldoPool > 0 ? (totalPool * 0.96) / ronaldoPool : null;
 
-  const estMessiWin = amount * messiMultiplier;
-  const estRonaldoWin = amount * ronaldoMultiplier;
+  const estMessiWin = amount * (messiMultiplier ?? 1.92);
+  const estRonaldoWin = amount * (ronaldoMultiplier ?? 1.92);
 
   const presets = [100, 1000, 10000, 100000];
 
@@ -243,7 +243,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
 
           <div className="relative z-20 flex items-center justify-between pt-1 border-t border-blue-400/20 text-[10px] font-mono">
             <span className="bg-blue-900/90 border border-blue-400/40 px-1.5 py-0.5 rounded text-blue-200 font-bold">
-              {messiMultiplier.toFixed(2)}x
+              {messiMultiplier ? `${messiMultiplier.toFixed(2)}x` : '—'}
             </span>
             <span className="text-blue-100 font-bold">
               Win: ${(estMessiWin || 0).toFixed(1)}
@@ -290,7 +290,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
 
           <div className="relative z-20 flex items-center justify-between pt-1 border-t border-red-400/20 text-[10px] font-mono">
             <span className="bg-red-900/90 border border-red-400/40 px-1.5 py-0.5 rounded text-red-200 font-bold">
-              {ronaldoMultiplier.toFixed(2)}x
+              {ronaldoMultiplier ? `${ronaldoMultiplier.toFixed(2)}x` : '—'}
             </span>
             <span className="text-red-100 font-bold">
               Win: ${(estRonaldoWin || 0).toFixed(1)}
@@ -309,7 +309,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
       {/* Bet Confirmation Modal */}
       {pendingBet && (() => {
         const isMessi = pendingBet.side === 'messi';
-        const mult = isMessi ? messiMultiplier : ronaldoMultiplier;
+        const mult = (isMessi ? messiMultiplier : ronaldoMultiplier) ?? 1.92;
         const estWin = pendingBet.amount * mult;
         return (
           <div

@@ -44,6 +44,20 @@
   #gate input { width:100%; margin:14px 0; text-align:center; }
   #gate button { width:100%; }
   .shot { max-width:120px; max-height:120px; border-radius:8px; border:1px solid #30363D; cursor:pointer; }
+  .tbadge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; font-family:ui-monospace,monospace; }
+  .t-BET { background:#1E3A5F; color:#7DD3FC; }
+  .t-WIN { background:#064E3B; color:#34D399; }
+  .t-LOSS { background:#7F1D1D; color:#FCA5A5; }
+  .t-REFUND { background:#3F3F46; color:#D4D4D8; }
+  .t-LOGIN, .t-LOGIN_TELEGRAM { background:#1E293B; color:#94A3B8; }
+  .t-AUTO_START { background:#4C1D95; color:#C4B5FD; }
+  .t-AUTO_CANCEL { background:#78350F; color:#FCD34D; }
+  .t-ROUND_SETTLED { background:#134E4A; color:#5EEAD4; }
+  .t-ROUND_CANCELLED { background:#450A0A; color:#FCA5A5; }
+  #detail { position:fixed; inset:0; background:rgba(1,4,9,.82); backdrop-filter:blur(4px); z-index:60; display:none; overflow-y:auto; padding:24px 12px; }
+  #detail .inner { max-width:860px; margin:0 auto; }
+  .dsec { margin-bottom:12px; }
+  .dsec h3 { font-size:12px; color:#F59E0B; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
   @media (max-width:640px) { table { font-size:12px; } .hide-sm { display:none; } }
 </style>
 </head>
@@ -77,6 +91,21 @@
   </div>
 
   <div class="card">
+    <h2>Live Activity — every user action</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="ghost" id="reloadAudit">Refresh</button>
+      <span class="muted" style="font-size:12px">auto-refreshes every 5s · bets, wins, losses, refunds, logins, auto-bet start/cancel</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Time</th><th>User</th><th>Event</th><th>Details</th></tr></thead>
+        <tbody id="auditBody"></tbody>
+      </table>
+    </div>
+    <div class="err" id="auditErr"></div>
+  </div>
+
+  <div class="card">
     <h2>Payment Requests</h2>
     <button class="ghost" id="reloadPay" style="margin-bottom:10px">Refresh</button>
     <div style="overflow-x:auto">
@@ -97,6 +126,8 @@
   <div class="err" id="gateErr"></div>
 </div>
 
+<div id="detail"><div class="inner" id="detailInner"></div></div>
+
 <script>
 const API = 'https://backend-production-5be2b.up.railway.app/api';
 let SECRET = sessionStorage.getItem('duel_admin_secret') || '';
@@ -112,6 +143,8 @@ async function call(path, opts = {}) {
   return data;
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtT = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const fmtD = (o) => Object.entries(o || {}).map(([k, v]) => `${esc(k)}=<b>${esc(v)}</b>`).join(' · ');
 
 async function loadVault() {
   try {
@@ -125,11 +158,60 @@ async function loadUsers() {
   const { users } = await call('/admin/users');
   $('usersBody').innerHTML = users
     .filter(u => !f || u.username.toLowerCase().includes(f))
-    .map(u => `<tr><td>${esc(u.username)}</td><td><b>${(+u.balance).toFixed(2)}</b></td><td class="hide-sm">${(+u.withdrawableBalance).toFixed(2)}</td><td><button class="ghost" onclick="quick('${esc(u.username)}')">Select</button></td></tr>`).join('')
+    .map(u => `<tr><td>${esc(u.username)}</td><td><b>${(+u.balance).toFixed(2)}</b></td><td class="hide-sm">${(+u.withdrawableBalance).toFixed(2)}</td><td><button class="ghost" onclick="inspect('${u.id}')">Inspect</button> <button class="ghost" onclick="quick('${esc(u.username)}')">Adjust</button></td></tr>`).join('')
     || '<tr><td colspan="4" class="muted">No users</td></tr>';
 }
 
 window.quick = (username) => { $('adjUser').value = username; $('adjAmount').focus(); };
+
+// ---- Live audit feed ----
+async function loadAudit() {
+  try {
+    const { events } = await call('/admin/audit?limit=200');
+    $('auditBody').innerHTML = events.map((e) => `<tr>
+      <td class="muted">${fmtT(e.createdAt)}</td>
+      <td>${esc(e.username)}</td>
+      <td><span class="tbadge t-${esc(e.type)}">${esc(e.type)}</span></td>
+      <td class="muted" style="font-size:11px">${fmtD(safeParse(e.detail))}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="muted">No activity yet</td></tr>';
+  } catch (e) { $('auditErr').textContent = e.message; }
+}
+function safeParse(s) { try { return JSON.parse(s); } catch { return { raw: s }; } }
+
+// ---- Per-user drill-down ----
+window.inspect = async (id) => {
+  try {
+    const d = await call(`/admin/users/${id}`);
+    const u = d.user;
+    $('detailInner').innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h2 style="margin:0">Inspect — ${esc(u.username)}</h2>
+        <button class="ghost" onclick="document.getElementById('detail').style.display='none'">Close</button>
+      </div>
+      <div class="stat">Balance <b>${(+u.balance).toFixed(2)}</b></div>
+      <span class="stat">Withdrawable <b>${(+u.withdrawableBalance).toFixed(2)}</b></span>
+      <span class="stat muted">Joined ${new Date(u.createdAt).toLocaleString()}</span>
+    </div>
+    <div class="card dsec"><h3>Bets (${d.bets.length})</h3><table><tbody>
+      ${d.bets.map((b) => `<tr><td>${fmtT(b.createdAt)}</td><td><span class="tbadge t-BET">${b.selection}</span></td><td>$${(+b.amount).toFixed(2)}</td><td class="muted">${b.claimed ? 'settled' : 'open'} · round ${esc(b.roundId.slice(0, 8))}…</td></tr>`).join('') || '<tr><td class="muted">none</td></tr>'}
+    </tbody></table></div>
+    <div class="card dsec"><h3>Ledger (${d.transactions.length})</h3><table><tbody>
+      ${d.transactions.map((t) => `<tr><td>${fmtT(t.createdAt)}</td><td><b class="${t.amount >= 0 ? '' : 'err'}" style="${t.amount >= 0 ? 'color:#34D399' : 'color:#FCA5A5'}">${t.amount >= 0 ? '+' : ''}${(+t.amount).toFixed(2)}</b></td><td><span class="pill APPROVED">${t.type}</span></td><td class="muted">${esc(t.referenceId || '').slice(0, 10)}…</td></tr>`).join('') || '<tr><td class="muted">none</td></tr>'}
+    </tbody></table></div>
+    <div class="card dsec"><h3>Audit Timeline (${d.audits.length})</h3><table><tbody>
+      ${d.audits.map((a) => `<tr><td>${fmtT(a.createdAt)}</td><td><span class="tbadge t-${esc(a.type)}">${esc(a.type)}</span></td><td class="muted" style="font-size:11px">${fmtD(safeParse(a.detail))}</td></tr>`).join('') || '<tr><td class="muted">none</td></tr>'}
+    </tbody></table></div>
+    <div class="card dsec"><h3>Payments (${d.payments.length}) · Chat (${d.chatMessages.length})</h3><table><tbody>
+      ${d.payments.map((p) => `<tr><td>${fmtT(p.createdAt)}</td><td><span class="pill ${p.type}">${p.type}</span></td><td>$${(+p.coins).toFixed(0)} via ${esc(p.platform || '—')}</td><td><span class="pill ${p.status}">${p.status}</span></td></tr>`).join('')}
+      ${d.chatMessages.map((c) => `<tr><td>${fmtT(c.createdAt)}</td><td colspan="2" class="muted">chat: ${esc(c.text)}</td></tr>`).join('') || '<tr><td class="muted">no payments/chat yet</td></tr>'}
+    </tbody></table></div>`;
+    $('detail').style.display = 'block';
+  } catch (e) {
+    $('adjErr').textContent = e.message;
+  }
+};
+$('detail').addEventListener('click', (e) => { if (e.target.id === 'detail') e.target.style.display = 'none'; });
 
 async function adjust(type) {
   $('adjErr').textContent = ''; $('adjOk').textContent = '';
@@ -162,7 +244,8 @@ window.review = async (id, approve) => {
 
 function show() {
   $('gate').style.display = 'none'; $('app').style.display = 'block';
-  loadVault(); loadUsers(); loadPayments();
+  loadVault(); loadUsers(); loadPayments(); loadAudit();
+  if (!window.__auditTimer) window.__auditTimer = setInterval(loadAudit, 5000);
 }
 $('unlock').onclick = async () => {
   SECRET = $('secretInput').value.trim();
@@ -174,6 +257,7 @@ $('secretInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('un
 $('logout').onclick = () => { sessionStorage.removeItem('duel_admin_secret'); location.reload(); };
 $('reloadUsers').onclick = loadUsers;
 $('reloadPay').onclick = loadPayments;
+$('reloadAudit').onclick = loadAudit;
 $('userFilter').addEventListener('input', loadUsers);
 $('doCredit').onclick = () => adjust('CREDIT');
 $('doDebit').onclick = () => adjust('DEBIT');

@@ -9,16 +9,16 @@
     </linearGradient>
     <mask id="knock">
       <rect width="1024" height="1024" fill="white"/>
-      <path d="M512 640 L398 556 L442 420 L582 420 L626 556 Z" fill="black"/>
-      <g stroke="black" stroke-width="30" stroke-linecap="round">
-        <path d="M512 640 L512 700" fill="none"/>
-        <path d="M398 556 L342 574" fill="none"/>
-        <path d="M442 420 L404 372" fill="none"/>
-        <path d="M582 420 L620 372" fill="none"/>
-        <path d="M626 556 L682 574" fill="none"/>
+      <path d="M512 662 L369.4 558.4 L423.8 390.6 L600.2 390.6 L654.6 558.4 Z" fill="black"/>
+      <g stroke="black" stroke-width="34" stroke-linecap="round">
+        <path d="M512 662 L512 745" fill="none"/>
+        <path d="M369.4 558.4 L302.8 580" fill="none"/>
+        <path d="M423.8 390.6 L382.6 334" fill="none"/>
+        <path d="M600.2 390.6 L641.4 334" fill="none"/>
+        <path d="M654.6 558.4 L721.2 580" fill="none"/>
       </g>
     </mask>
   </defs>
   <rect width="1024" height="1024" rx="224" fill="url(#tile)"/>
-  <circle cx="512" cy="512" r="300" fill="#FFFFFF" mask="url(#knock)"/>
+  <circle cx="512" cy="512" r="372" fill="#FFFFFF" mask="url(#knock)"/>
 </svg>

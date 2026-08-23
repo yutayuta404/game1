@@ -7,17 +7,17 @@ export const BallMark: React.FC<{ className?: string }> = ({ className }) => (
     <defs>
       <mask id="ball-knock-header">
         <rect width="1024" height="1024" fill="white" />
-        <path d="M512 640 L398 556 L442 420 L582 420 L626 556 Z" fill="black" />
-        <g stroke="black" strokeWidth="30" strokeLinecap="round" fill="none">
-          <path d="M512 640 L512 700" />
-          <path d="M398 556 L342 574" />
-          <path d="M442 420 L404 372" />
-          <path d="M582 420 L620 372" />
-          <path d="M626 556 L682 574" />
+        <path d="M512 662 L369.4 558.4 L423.8 390.6 L600.2 390.6 L654.6 558.4 Z" fill="black" />
+        <g stroke="black" strokeWidth="34" strokeLinecap="round" fill="none">
+          <path d="M512 662 L512 745" />
+          <path d="M369.4 558.4 L302.8 580" />
+          <path d="M423.8 390.6 L382.6 334" />
+          <path d="M600.2 390.6 L641.4 334" />
+          <path d="M654.6 558.4 L721.2 580" />
         </g>
       </mask>
     </defs>
-    <circle cx="512" cy="512" r="300" fill="#FFFFFF" mask="url(#ball-knock-header)" />
+    <circle cx="512" cy="512" r="372" fill="#FFFFFF" mask="url(#ball-knock-header)" />
   </svg>
 );
 

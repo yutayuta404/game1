@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { RoundStatus, WinnerSide, Selection, TransactionType } from '../types';
 import { SettleResult, RoundState, BetRequest } from '../types';
 
-const ROUND_DURATION = 30; // 30 seconds for local testing
+const ROUND_DURATION = 60; // 60-second rounds
 const HOUSE_FEE_RATE = 0.10; // 10%
 const JACKPOT_FEE_RATE = 0.01; // 1%
 const NET_POOL_RATE = 0.89; // 89%
@@ -163,6 +163,15 @@ export class GameService {
       return { bet, newBalance: updatedUser.balance, newWithdrawable: updatedUser.withdrawableBalance };
     });
 
+    await prisma.auditEvent.create({
+      data: {
+        userId,
+        username: user.username,
+        type: 'BET',
+        detail: JSON.stringify({ roundId: result.bet.roundId, betId: result.bet.id, selection: betData.selection, amount: betData.amount, balanceAfter: result.newBalance })
+      }
+    });
+
     return result;
   }
 
@@ -280,6 +289,28 @@ export class GameService {
       await this.createNewRound();
     });
 
+    const usernameFor = (id: string) => round.bets.find((b: any) => b.userId === id)?.user?.username || 'unknown';
+    await this.writeAudits([
+      {
+        userId: 'system', username: 'system', type: 'ROUND_SETTLED',
+        detail: { roundId: round.id, winner, totalMessi, totalRonaldo, jackpotHit, jackpotWonAmount, payoutCount: payouts.length }
+      },
+      ...payouts.map((p) => ({
+        userId: p.userId,
+        username: usernameFor(p.userId),
+        type: 'WIN',
+        detail: { roundId: round.id, winner, betAmount: p.betAmount, payout: Math.round(p.payout * 100) / 100 }
+      })),
+      ...round.bets
+        .filter((b: any) => b.selection !== winner)
+        .map((b: any) => ({
+          userId: b.userId,
+          username: b.user?.username || 'unknown',
+          type: 'LOSS',
+          detail: { roundId: round.id, winner, betAmount: b.amount }
+        }))
+    ]);
+
     return {
       round: (await prisma.round.findUnique({ where: { id: round.id } }))!,
       winner,
@@ -288,6 +319,17 @@ export class GameService {
       totalWinningPool,
       payouts
     };
+  }
+
+  /** Fire-and-forget audit writes (never block settlement flow). */
+  private static async writeAudits(events: { userId: string; username: string; type: string; detail: any }[]) {
+    try {
+      await prisma.auditEvent.createMany({
+        data: events.map((e) => ({ userId: e.userId, username: e.username, type: e.type, detail: JSON.stringify(e.detail) }))
+      });
+    } catch (err) {
+      console.error('audit write failed:', err);
+    }
   }
 
   private static async cancelRound(round: any): Promise<SettleResult> {
@@ -326,6 +368,19 @@ export class GameService {
 
       await this.createNewRound();
     });
+
+    await this.writeAudits([
+      {
+        userId: 'system', username: 'system', type: 'ROUND_CANCELLED',
+        detail: { roundId: round.id, reason: 'uncontested', refundCount: bets.length }
+      },
+      ...bets.map((b: any) => ({
+        userId: b.userId,
+        username: b.user?.username || 'unknown',
+        type: 'REFUND',
+        detail: { roundId: round.id, betAmount: b.amount }
+      }))
+    ]);
 
     return {
       round: (await prisma.round.findUnique({ where: { id: round.id } }))!,

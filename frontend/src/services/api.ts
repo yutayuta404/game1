@@ -124,6 +124,15 @@ class ApiService {
     return this.request<{ rounds: any[] }>('/game/history');
   }
 
+  async reportAudit(type: 'AUTO_START' | 'AUTO_CANCEL', detail: Record<string, unknown>): Promise<void> {
+    try {
+      await this.request('/game/audit', {
+        method: 'POST',
+        body: JSON.stringify({ type, detail }),
+      });
+    } catch { /* audit is best-effort */ }
+  }
+
   async getMyPayments(): Promise<{ requests: any[] }> {
     return this.request<{ requests: any[] }>('/game/payment-requests');
   }

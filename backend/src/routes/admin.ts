@@ -53,6 +53,43 @@ router.get('/vault', requireAdmin, asyncHandler(async (req: Request, res: Respon
   res.json({ vault });
 }));
 
+// ---- Audit trail: global feed + per-user drill-down ----
+router.get('/audit', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const take = Math.min(Number(req.query.limit) || 200, 500);
+  const events = await prisma.auditEvent.findMany({
+    orderBy: { createdAt: 'desc' },
+    take,
+  });
+  res.json({ events });
+}));
+
+router.get('/users/:id', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      bets: { orderBy: { createdAt: 'desc' }, take: 100 },
+      transactions: { orderBy: { createdAt: 'desc' }, take: 100 },
+      payments: { orderBy: { createdAt: 'desc' }, take: 50 },
+    },
+  });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const audits = await prisma.auditEvent.findMany({
+    where: { userId: id },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+  const chatMessages = await prisma.chatMessage.findMany({
+    where: { userId: id },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+
+  const { bets, transactions, payments, ...safeUser } = user;
+  res.json({ user: safeUser, bets, transactions, payments, audits, chatMessages });
+}));
+
 export default router;
 // ---- Payment request review (approve credits topups; reject refunds withdrawals) ----
 router.get('/payment-requests', requireAdmin, asyncHandler(async (req: Request, res: Response) => {

@@ -70,6 +70,18 @@ model ChatMessage {
   @@index([createdAt])
 }
 
+model AuditEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  username  String
+  type      String
+  detail    String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
 model LedgerTransaction {
   id          String           @id @default(uuid())
   userId      String
