@@ -105,6 +105,25 @@ class ApiService {
     return this.request<{ vault: any }>('/game/vault');
   }
 
+  async getChat(): Promise<{ messages: Array<{ id: string; userId: string; username: string; text: string; createdAt: string }> }> {
+    return this.request<{ messages: any[] }>('/game/chat');
+  }
+
+  async sendChat(text: string): Promise<{ message: any }> {
+    return this.request<{ message: any }>('/game/chat', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async getRecentBets(): Promise<{ bets: Array<{ id: string; roundId: string; user: string; selection: 'MESSI' | 'RONALDO'; amount: number; createdAt: string }> }> {
+    return this.request<{ bets: any[] }>('/game/recent-bets');
+  }
+
+  async getRoundHistory(): Promise<{ rounds: any[] }> {
+    return this.request<{ rounds: any[] }>('/game/history');
+  }
+
   async getMyPayments(): Promise<{ requests: any[] }> {
     return this.request<{ requests: any[] }>('/game/payment-requests');
   }

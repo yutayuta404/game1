@@ -1,6 +1,25 @@
 import React from 'react';
-import { Coins, Plus, Volume2, VolumeX, Flame } from 'lucide-react';
+import { Coins, Plus, Volume2, VolumeX } from 'lucide-react';
 import { sound } from '../utils/audio';
+
+export const BallMark: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 1024 1024" className={className} aria-hidden="true">
+    <defs>
+      <mask id="ball-knock-header">
+        <rect width="1024" height="1024" fill="white" />
+        <path d="M512 640 L398 556 L442 420 L582 420 L626 556 Z" fill="black" />
+        <g stroke="black" strokeWidth="30" strokeLinecap="round" fill="none">
+          <path d="M512 640 L512 700" />
+          <path d="M398 556 L342 574" />
+          <path d="M442 420 L404 372" />
+          <path d="M582 420 L620 372" />
+          <path d="M626 556 L682 574" />
+        </g>
+      </mask>
+    </defs>
+    <circle cx="512" cy="512" r="300" fill="#FFFFFF" mask="url(#ball-knock-header)" />
+  </svg>
+);
 
 interface HeaderBarProps {
   roundId: number;
@@ -23,7 +42,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
       {/* App Logo & Round ID */}
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 via-amber-500 to-red-600 flex items-center justify-center shadow-md shadow-amber-500/10">
-          <Flame className="w-4 h-4 text-white fill-amber-300" />
+          <BallMark className="w-5 h-5" />
         </div>
         <div>
           <div className="flex items-center gap-1.5 leading-none">

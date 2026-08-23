@@ -46,7 +46,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ messages, onSendMessage }) => 
             <span>Community Live Feed</span>
           </span>
         </div>
-        <span className="text-[11px] font-mono text-gray-400">142 online</span>
+        <span className="text-[11px] font-mono text-gray-400">
+          {new Set(messages.filter((m) => m.type === 'user').map((m) => m.user)).size} chatting
+        </span>
       </div>
 
       {/* Messages Feed Area */}

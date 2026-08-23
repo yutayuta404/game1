@@ -18,65 +18,13 @@ import { useAuth } from '../hooks/useAuth';
 import { getInitData, getTelegramUsername, hapticSuccess, hapticWarning } from '../utils/telegram';
 import { api } from '../services/api';
 
-// Initial Mock Seed Data
-const INITIAL_HISTORY: RoundHistoryItem[] = [
-  { roundId: 1041, winner: 'messi', multiplier: 1.85, totalPool: 6800, messiPool: 3600, ronaldoPool: 3200, timestamp: Date.now() - 35000 },
-  { roundId: 1040, winner: 'ronaldo', multiplier: 2.12, totalPool: 5400, messiPool: 2900, ronaldoPool: 2500, timestamp: Date.now() - 70000 },
-  { roundId: 1039, winner: 'messi', multiplier: 1.91, totalPool: 7200, messiPool: 3700, ronaldoPool: 3500, timestamp: Date.now() - 105000 },
-  { roundId: 1038, winner: 'ronaldo', multiplier: 2.05, totalPool: 6100, messiPool: 3200, ronaldoPool: 2900, timestamp: Date.now() - 140000 },
-  { roundId: 1037, winner: 'messi', multiplier: 1.88, totalPool: 8300, messiPool: 4400, ronaldoPool: 3900, timestamp: Date.now() - 175000 },
-  { roundId: 1036, winner: 'messi', multiplier: 1.94, totalPool: 4900, messiPool: 2500, ronaldoPool: 2400, timestamp: Date.now() - 210000 },
-  { roundId: 1035, winner: 'ronaldo', multiplier: 2.20, totalPool: 9100, messiPool: 5000, ronaldoPool: 4100, timestamp: Date.now() - 245000 },
-  { roundId: 1034, winner: 'ronaldo', multiplier: 2.15, totalPool: 6400, messiPool: 3400, ronaldoPool: 3000, timestamp: Date.now() - 280000 },
-  { roundId: 1033, winner: 'messi', multiplier: 1.82, totalPool: 7600, messiPool: 4100, ronaldoPool: 3500, timestamp: Date.now() - 315000 },
-  { roundId: 1032, winner: 'messi', multiplier: 1.89, totalPool: 5800, messiPool: 3000, ronaldoPool: 2800, timestamp: Date.now() - 350000 },
-];
-
-const RANDOM_USERS = [
-  { name: 'CryptoKing', avatar: 'CK', badge: 'VIP 3' },
-  { name: 'Satoshi99', avatar: 'S9', badge: 'VIP 2' },
-  { name: 'BarcaFan10', avatar: 'BF', badge: 'PRO' },
-  { name: 'Madridista7', avatar: 'M7', badge: 'PRO' },
-  { name: 'MoonWalker', avatar: 'MW', badge: 'VIP 1' },
-  { name: 'ApexPredator', avatar: 'AP', badge: 'ELITE' },
-  { name: 'LuckyStrike', avatar: 'LS', badge: 'PRO' },
-  { name: 'GoldDigger', avatar: 'GD', badge: 'VIP 4' },
-  { name: 'CR7Prime', avatar: 'C7', badge: 'LEGEND' },
-  { name: 'LeoAnkara', avatar: 'LA', badge: 'LEGEND' },
-];
-
-const CHAT_SEED: ChatMessage[] = [
-  {
-    id: 'c-1',
-    type: 'system',
-    text: 'Welcome to 0XDUEL! Pick your side: Team Messi vs Team Ronaldo. 30s per round!',
-    timestamp: Date.now() - 60000,
-  },
-  {
-    id: 'c-2',
-    type: 'user',
-    user: 'BarcaFan10',
-    avatar: 'BF',
-    badge: 'PRO',
-    text: 'Messi is on a 3-round streak! Locking in $100 on Leo.',
-    timestamp: Date.now() - 40000,
-  },
-  {
-    id: 'c-3',
-    type: 'user',
-    user: 'Madridista7',
-    avatar: 'M7',
-    badge: 'PRO',
-    text: 'Ronaldo bounce is due this round, watch the physics right peg!',
-    timestamp: Date.now() - 25000,
-  },
-  {
-    id: 'c-4',
-    type: 'whale',
-    text: 'High Roller Alert: @GoldDigger placed $450 on Ronaldo at 2.15x payout!',
-    timestamp: Date.now() - 15000,
-  },
-];
+// Local system notice shown atop the real chat feed
+const WELCOME_MESSAGE: ChatMessage = {
+  id: 'welcome',
+  type: 'system',
+  text: 'Welcome to 0XDUEL! Pick your side: Team Messi vs Team Ronaldo. 30s per round!',
+  timestamp: Date.now(),
+};
 
 export default function GamePage() {
   const { user, loading: authLoading, login, loginTelegram, logout, updateBalance, refresh: refreshAuth } = useAuth();
@@ -105,60 +53,15 @@ export default function GamePage() {
     estPayout: number;
   } | null>(null);
 
-  // Live Bets Table State
-  const [activeBets, setActiveBets] = useState<BetItem[]>([
-    {
-      id: 'b-1',
-      roundId: 1042,
-      user: 'GoldDigger',
-      avatar: 'GD',
-      side: 'ronaldo',
-      amount: 450,
-      estPayout: 967.5,
-      multiplier: 2.15,
-      timestamp: Date.now() - 15000,
-    },
-    {
-      id: 'b-2',
-      roundId: 1042,
-      user: 'BarcaFan10',
-      avatar: 'BF',
-      side: 'messi',
-      amount: 100,
-      estPayout: 185.0,
-      multiplier: 1.85,
-      timestamp: Date.now() - 22000,
-    },
-    {
-      id: 'b-3',
-      roundId: 1042,
-      user: 'Satoshi99',
-      avatar: 'S9',
-      side: 'messi',
-      amount: 250,
-      estPayout: 462.5,
-      multiplier: 1.85,
-      timestamp: Date.now() - 30000,
-    },
-    {
-      id: 'b-4',
-      roundId: 1042,
-      user: 'MoonWalker',
-      avatar: 'MW',
-      side: 'ronaldo',
-      amount: 75,
-      estPayout: 161.25,
-      multiplier: 2.15,
-      timestamp: Date.now() - 35000,
-    },
-  ]);
+  // Live Bets Table State (real bets, polled from backend)
+  const [activeBets, setActiveBets] = useState<BetItem[]>([]);
 
-  // Chat Feed State
-  const [messages, setMessages] = useState<ChatMessage[]>(CHAT_SEED);
+  // Chat Feed State (real messages, polled from backend)
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
 
-  // History Ribbon State
-  const [history, setHistory] = useState<RoundHistoryItem[]>(INITIAL_HISTORY);
+  // History Ribbon State (real settled rounds, polled from backend)
+  const [history, setHistory] = useState<RoundHistoryItem[]>([]);
 
   // Result Modal State
   const [resultModal, setResultModal] = useState<{
@@ -327,18 +230,102 @@ export default function GamePage() {
 
   // Chat message send handler
   const handleSendMessage = (text: string) => {
-    const newMsg: ChatMessage = {
-      id: `user-msg-${Date.now()}`,
+    if (!user) return;
+    const optimistic: ChatMessage = {
+      id: `pending-${Date.now()}`,
       type: 'user',
-      user: 'You',
-      avatar: 'ME',
-      badge: 'VIP',
+      user: user.username,
       text,
       timestamp: Date.now(),
       isUser: true,
     };
-    setMessages((prev) => [...prev, newMsg]);
+    setMessages((prev) => [...prev, optimistic]);
+    api.sendChat(text).catch(() => {
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+    });
   };
+
+  // ---- Real-data polling (chat / recent bets / settled history) ----
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const chatCountRef = useRef(1); // welcome message
+
+  useEffect(() => {
+    if (!user) return;
+
+    const pollChat = async () => {
+      try {
+        const { messages: rows } = await api.getChat();
+        const mapped: ChatMessage[] = rows.map((r) => ({
+          id: r.id,
+          type: 'user' as const,
+          user: r.username,
+          avatar: r.username.slice(0, 2).toUpperCase(),
+          text: r.text,
+          timestamp: new Date(r.createdAt).getTime(),
+          isUser: r.userId === user.id,
+        }));
+        setMessages([WELCOME_MESSAGE, ...mapped]);
+        if (activeTabRef.current !== 'chat' && mapped.length > chatCountRef.current) {
+          setUnreadChatCount((c) => Math.min(99, c + (mapped.length - chatCountRef.current)));
+        }
+        chatCountRef.current = mapped.length;
+      } catch { /* offline — keep last */ }
+    };
+
+    const pollBets = async () => {
+      try {
+        const { bets } = await api.getRecentBets();
+        setActiveBets(bets.map((b) => {
+          const side: TeamSide = b.selection === 'MESSI' ? 'messi' : 'ronaldo';
+          const total = messiPoolRef.current + ronaldoPoolRef.current;
+          const sidePool = side === 'messi' ? messiPoolRef.current : ronaldoPoolRef.current;
+          const mult = sidePool > 0 ? (total * 0.96) / sidePool : 1.92;
+          return {
+            id: b.id,
+            roundId: roundIdRef.current,
+            user: b.user,
+            avatar: b.user.slice(0, 2).toUpperCase(),
+            side,
+            amount: b.amount,
+            estPayout: b.amount * mult,
+            multiplier: mult,
+            timestamp: new Date(b.createdAt).getTime(),
+            isUser: b.user === user.username,
+          };
+        }));
+      } catch { /* offline — keep last */ }
+    };
+
+    const pollHistory = async () => {
+      try {
+        const { rounds } = await api.getRoundHistory();
+        setHistory(rounds.map((r) => ({
+          roundId: r.endTimestamp,
+          winner: r.winner === 'MESSI' ? 'messi' : 'ronaldo',
+          multiplier: r.totalMessi > 0 && r.totalRonaldo > 0
+            ? ((r.totalMessi + r.totalRonaldo) * 0.89) / (r.winner === 'MESSI' ? r.totalMessi : r.totalRonaldo)
+            : 0,
+          totalPool: (r.totalMessi || 0) + (r.totalRonaldo || 0),
+          messiPool: r.totalMessi || 0,
+          ronaldoPool: r.totalRonaldo || 0,
+          timestamp: r.endTimestamp * 1000,
+        })));
+      } catch { /* offline — keep last */ }
+    };
+
+    pollChat();
+    pollBets();
+    pollHistory();
+    const chatTimer = setInterval(pollChat, 4000);
+    const betsTimer = setInterval(pollBets, 5000);
+    const historyTimer = setInterval(pollHistory, 15000);
+    return () => {
+      clearInterval(chatTimer);
+      clearInterval(betsTimer);
+      clearInterval(historyTimer);
+    };
+  }, [user]);
 
   // Ball Drop Landing Callback from Matter.js
   const handleBallLanded = useCallback((winner: TeamSide) => {
@@ -412,14 +399,6 @@ export default function GamePage() {
     }, 4500);
   }, []);
 
-  // Manual Trigger Demo Drop (Instant test)
-  const handleManualTriggerDrop = () => {
-    if (phase === 'betting') {
-      setTimeLeft(0);
-      setPhase('dropping');
-    }
-  };
-
   // Main 30-Second Countdown & Round Engine
   useEffect(() => {
     const timer = setInterval(() => {
@@ -432,72 +411,6 @@ export default function GamePage() {
             }
             return next;
           });
-
-          // Random simulated incoming bet from other players
-          if (Math.random() < 0.45) {
-            const randomPlayer = RANDOM_USERS[Math.floor(Math.random() * RANDOM_USERS.length)];
-            const side: TeamSide = Math.random() > 0.48 ? 'messi' : 'ronaldo';
-            const amounts = [10, 25, 50, 75, 100, 150, 250, 500];
-            const betAmount = amounts[Math.floor(Math.random() * amounts.length)];
-
-            if (side === 'messi') {
-              setMessiPool((p) => p + betAmount);
-            } else {
-              setRonaldoPool((p) => p + betAmount);
-            }
-
-            const currentTotal = messiPoolRef.current + ronaldoPoolRef.current + betAmount;
-            const currentSide = (side === 'messi' ? messiPoolRef.current : ronaldoPoolRef.current) + betAmount;
-            const mult = (currentTotal * 0.96) / currentSide;
-
-            const simBet: BetItem = {
-              id: `sim-bet-${Date.now()}-${Math.random()}`,
-              roundId: roundIdRef.current,
-              user: randomPlayer.name,
-              avatar: randomPlayer.avatar,
-              side,
-              amount: betAmount,
-              estPayout: betAmount * mult,
-              multiplier: mult,
-              timestamp: Date.now(),
-            };
-
-            setActiveBets((prev) => [simBet, ...prev.slice(0, 49)]);
-
-            if (betAmount >= 250) {
-              const whaleAlert: ChatMessage = {
-                id: `whale-${Date.now()}-${Math.random()}`,
-                type: 'whale',
-                text: `High Roller Alert: @${randomPlayer.name} placed $${betAmount} on ${side === 'messi' ? 'Messi' : 'Ronaldo'}!`,
-                timestamp: Date.now(),
-              };
-              setMessages((m) => [...m, whaleAlert]);
-            }
-          }
-
-          // Random simulated chat chatter
-          if (Math.random() < 0.15) {
-            const chatQuotes = [
-              'Leo GOAT for real',
-              'Siuuu all day',
-              'Pool is getting massive!',
-              'Come on Ronaldo right bin!',
-              'Messi 2x payout incoming!',
-              'Look at that bounce trajectory',
-            ];
-            const randomPlayer = RANDOM_USERS[Math.floor(Math.random() * RANDOM_USERS.length)];
-            const randomQuote = chatQuotes[Math.floor(Math.random() * chatQuotes.length)];
-            const simChat: ChatMessage = {
-              id: `chat-${Date.now()}-${Math.random()}`,
-              type: 'user',
-              user: randomPlayer.name,
-              avatar: randomPlayer.avatar,
-              badge: randomPlayer.badge,
-              text: randomQuote,
-              timestamp: Date.now(),
-            };
-            setMessages((prev) => [...prev, simChat]);
-          }
         } else {
           // Timer reached 0 -> Trigger ball drop!
           setPhase('dropping');
@@ -599,7 +512,6 @@ export default function GamePage() {
               <BallDropCanvas
                 phase={phase}
                 onBallLanded={handleBallLanded}
-                onManualTriggerDrop={handleManualTriggerDrop}
               />
 
               {/* Betting Control Pad */}

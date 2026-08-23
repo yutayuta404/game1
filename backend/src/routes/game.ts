@@ -101,4 +101,76 @@ router.get('/payment-requests', authenticateToken, authAsyncHandler(async (req: 
   res.json({ requests });
 }));
 
+// ---- Chat (real community messages) ----
+router.get('/chat', asyncHandler(async (req: Request, res: Response) => {
+  const take = Math.min(Number(req.query.limit) || 50, 100);
+  const messages = await prisma.chatMessage.findMany({
+    orderBy: { createdAt: 'desc' },
+    take,
+    select: { id: true, userId: true, username: true, text: true, createdAt: true },
+  });
+  res.json({ messages: messages.reverse() });
+}));
+
+router.post('/chat', authenticateToken, authAsyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const text = String(req.body?.text || '').trim();
+  if (!text || text.length > 140) {
+    return res.status(400).json({ error: 'Message must be 1-140 characters' });
+  }
+
+  const last = await prisma.chatMessage.findFirst({
+    where: { userId: req.user!.userId },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (last && Date.now() - new Date(last.createdAt).getTime() < 1500) {
+    return res.status(429).json({ error: 'Sending too fast — slow down a little' });
+  }
+
+  const message = await prisma.chatMessage.create({
+    data: { userId: req.user!.userId, username: req.user!.username, text },
+    select: { id: true, userId: true, username: true, text: true, createdAt: true },
+  });
+  res.json({ message });
+}));
+
+// ---- Recent bets across all players ----
+router.get('/recent-bets', asyncHandler(async (req: Request, res: Response) => {
+  const take = Math.min(Number(req.query.limit) || 20, 50);
+  const bets = await prisma.bet.findMany({
+    orderBy: { createdAt: 'desc' },
+    take,
+    include: { user: { select: { username: true } } },
+  });
+  res.json({
+    bets: bets.map((b) => ({
+      id: b.id,
+      roundId: b.roundId,
+      user: b.user.username,
+      selection: b.selection,
+      amount: b.amount,
+      createdAt: b.createdAt,
+    })),
+  });
+}));
+
+// ---- Settled round history ----
+router.get('/history', asyncHandler(async (req: Request, res: Response) => {
+  const rounds = await prisma.round.findMany({
+    where: { status: 'SETTLED' },
+    orderBy: { endTimestamp: 'desc' },
+    take: 10,
+    include: { bets: true },
+  });
+  res.json({
+    rounds: rounds.map((r) => ({
+      id: r.id,
+      winner: r.winner,
+      totalMessi: r.totalMessi,
+      totalRonaldo: r.totalRonaldo,
+      endTimestamp: r.endTimestamp,
+      betCount: r.bets.length,
+    })),
+  });
+}));
+
 export default router;

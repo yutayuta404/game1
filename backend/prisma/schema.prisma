@@ -56,6 +56,18 @@ model User {
   bets                Bet[]
   transactions        LedgerTransaction[]
   payments            PaymentRequest[]
+  chatMessages        ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  username  String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model LedgerTransaction {

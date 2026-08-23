@@ -1,14 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import confetti from 'canvas-confetti';
-import { Sparkles, Play } from 'lucide-react';
 import type { TeamSide } from '../types/clash';
 import { sound } from '../utils/audio';
 
 interface BallDropCanvasProps {
   phase: 'betting' | 'dropping' | 'finished';
   onBallLanded: (winner: TeamSide) => void;
-  onManualTriggerDrop?: () => void;
 }
 
 interface Particle {
@@ -25,7 +23,6 @@ interface Particle {
 export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
   phase,
   onBallLanded,
-  onManualTriggerDrop,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -347,25 +344,6 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       className="relative w-full h-[280px] bg-[#090D12] rounded-xl overflow-hidden border border-[#30363D] shadow-inner"
     >
       <canvas ref={canvasRef} className="w-full h-full block" />
-
-      <div className="absolute top-2 left-2 flex items-center gap-1 bg-[#161B22]/80 backdrop-blur-xs px-2 py-0.5 rounded-full border border-[#30363D] text-[10px] text-gray-300 font-mono">
-        <Sparkles className="w-3 h-3 text-amber-400" />
-        <span>Matter.js 2D Physics</span>
-      </div>
-
-      {onManualTriggerDrop && phase === 'betting' && (
-        <button
-          onClick={() => {
-            sound.playClick();
-            onManualTriggerDrop();
-          }}
-          title="Instant Drop Test"
-          className="absolute top-2 right-2 flex items-center gap-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold active:scale-95 transition-transform cursor-pointer"
-        >
-          <Play className="w-2.5 h-2.5 fill-amber-300" />
-          <span>Demo Drop</span>
-        </button>
-      )}
 
       {activeSideGlow === 'messi' && (
         <div className="absolute inset-y-0 left-0 w-1/2 bg-blue-500/20 pointer-events-none animate-pulse border-r-2 border-blue-400" />
