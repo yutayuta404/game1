@@ -335,6 +335,21 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
         extract(epoch from now())::int + 300, 'ACTIVE', now());
 ```
 
+### Production Deployment (verified working 2026-08-23)
+
+**Backend → Railway** (project `game1`, services: `backend` + `Postgres`)
+- Public URL: `https://backend-production-5be2b.up.railway.app` (port 3001)
+- Auto-deploys from GitHub `yutayuta404/game1` branch `main`
+- **Start command**: `cd backend && npx prisma db push --accept-data-loss && node dist/index.js`
+  — syncs the Prisma schema to the cloud DB on EVERY boot (Prisma 7 needs `cd backend` so it finds `prisma.config.ts`, which supplies DATABASE_URL from env; schema has no `url` line)
+- ⚠️ Railway "Redeploy" REUSES the old deployment's config snapshot — start-command/pre-deploy changes only apply on a fresh deployment triggered by a git push (empty commit works)
+- Env vars set on service: ADMIN_SECRET, DATABASE_URL (→ Postgres), FRONTEND_URL, JWT_SECRET, NODE_ENV=production, PORT=3001
+
+**Frontend → Vercel** (project `game1`)
+- URL: `https://game1-tawny-gamma.vercel.app`; deployed via Vercel CLI (`vercel.json`: vite build from `frontend/`) — NOT git-linked
+- Bundle bakes `VITE_API_URL=https://backend-production-5be2b.up.railway.app/api`
+- Backend CORS (`FRONTEND_URL`) verified to allow the Vercel origin
+
 ### Current Configuration
 - **Frontend port**: 5173 (dev server usually started with `--force`)
 - **Round duration**: 30 seconds (backend `ROUND_DURATION`; frontend resets `setTimeLeft(30)`)
