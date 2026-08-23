@@ -15,7 +15,7 @@ import { PaymentFormModal } from '../components/PaymentFormModal';
 import { RoundResultModal } from '../components/RoundResultModal';
 import { sound } from '../utils/audio';
 import { useAuth } from '../hooks/useAuth';
-import { getInitData, getTelegramUsername, hapticSuccess, hapticWarning } from '../utils/telegram';
+import { getInitData, getTelegramUsername, hapticLight, hapticSuccess, hapticWarning } from '../utils/telegram';
 import { api } from '../services/api';
 import { useLang } from '../i18n';
 
@@ -281,6 +281,22 @@ export default function GamePage() {
   activeTabRef.current = activeTab;
   const chatCountRef = useRef(1); // welcome message
 
+  // Manual refresh: latest poll functions, callable from the header button
+  const pollFnsRef = useRef<{ round?: () => void; chat?: () => void; bets?: () => void; history?: () => void }>({});
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleManualRefresh = useCallback(() => {
+    if (refreshing) return;
+    hapticLight();
+    setRefreshing(true);
+    pollFnsRef.current.round?.();
+    pollFnsRef.current.chat?.();
+    pollFnsRef.current.bets?.();
+    pollFnsRef.current.history?.();
+    refreshAuth();
+    setTimeout(() => setRefreshing(false), 800);
+  }, [refreshing, refreshAuth]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -348,6 +364,9 @@ export default function GamePage() {
     pollChat();
     pollBets();
     pollHistory();
+    pollFnsRef.current.chat = () => void pollChat();
+    pollFnsRef.current.bets = () => void pollBets();
+    pollFnsRef.current.history = () => void pollHistory();
     const chatTimer = setInterval(pollChat, 4000);
     const betsTimer = setInterval(pollBets, 5000);
     const historyTimer = setInterval(pollHistory, 15000);
@@ -400,6 +419,7 @@ export default function GamePage() {
     };
 
     sync();
+    pollFnsRef.current.round = () => void sync();
     const t = setInterval(sync, 1400);
     return () => { stopped = true; clearInterval(t); };
   }, [user]);
@@ -576,6 +596,8 @@ export default function GamePage() {
           onOpenTopUp={() => setPaymentModal('topup')}
           soundEnabled={soundEnabled}
           onToggleSound={handleToggleSound}
+          onRefresh={handleManualRefresh}
+          refreshing={refreshing}
         />
 
         {/* 2. Persistent History Ribbon */}

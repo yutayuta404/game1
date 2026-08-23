@@ -16,6 +16,7 @@ const en = {
   withdraw: 'Withdraw',
   muteSound: 'Mute sound',
   unmuteSound: 'Unmute sound',
+  refresh: 'Refresh',
 
   // Countdown / canvas
   dropping: 'DROPPING',
@@ -199,6 +200,7 @@ const my: Record<TKey, string> = {
   withdraw: 'ငွေထုတ်',
   muteSound: 'အသံပိတ်',
   unmuteSound: 'အသံဖွင့်',
+  refresh: 'ပြန်ဆွဲ',
 
   // Countdown / canvas
   dropping: 'ကျဆင်းနေ',

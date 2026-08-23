@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coins, Plus, Volume2, VolumeX } from 'lucide-react';
+import { Coins, Plus, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { sound } from '../utils/audio';
 import { useLang } from '../i18n';
 
@@ -28,6 +28,8 @@ interface HeaderBarProps {
   onOpenTopUp: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -36,6 +38,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenTopUp,
   soundEnabled,
   onToggleSound,
+  onRefresh,
+  refreshing,
 }) => {
   const { t } = useLang();
   return (
@@ -62,6 +66,20 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
       {/* Balance & Top Up */}
       <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => {
+            if (!refreshing) {
+              sound.playClick();
+              onRefresh();
+            }
+          }}
+          title={t('refresh')}
+          disabled={refreshing}
+          className="p-1.5 rounded-md text-gray-400 hover:text-white bg-[#0D1117] border border-[#30363D] active:scale-95 transition-transform disabled:opacity-60"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
+
         <button
           onClick={onToggleSound}
           title={soundEnabled ? t('muteSound') : t('unmuteSound')}
