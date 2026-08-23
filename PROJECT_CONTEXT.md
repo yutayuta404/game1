@@ -2,18 +2,19 @@
 
 ## 1. Project Overview & Intent
 
-**Messi vs Ronaldo / 0XDUEL** (formerly CLASHDROP) - Web2 mobile-first prediction pool game with 2D Matter.js physics animations.
+**Messi vs Ronaldo / 0XDUEL** (formerly CLASHDROP) - Web2 mobile-first prediction pool game with 2D Matter.js physics animations. Live on Telegram via @zeroxduel_bot.
 
-- **Core mechanic**: Users bet on Messi or Ronaldo in 30-second rounds (configurable, was 5 min)
-- **UI**: Rebuilt around an AI Studio "clash-ball-drop" mobile design — dark theme (`#05070A`/`#0D1117`/`#161B22` cards, amber accents), bottom tab nav, player cutout buttons
+- **Core mechanic**: Users bet on Messi or Ronaldo in **60-second rounds** (server-timed)
+- **UI**: Mobile-first dark theme (`#05070A`/`#0D1117`/`#161B22` cards, amber accents), bottom tab nav, player cutout buttons
 - **Fee structure**: **10% house fee, 1% jackpot fee (1-in-2,076 chance per round), 89% winner pool**
 - **Off-chain**: Non-custodial balance system with manual admin top-ups
-- **Withdrawal model (FIXED 2026-08-23)**: `balance` (spendable) vs `withdrawableBalance`. **Stakes NEVER create withdrawable** — only settlement payouts (WIN credits both), uncontested-round REFUNDs, and rejected-withdrawal refunds touch withdrawable. Top-ups/admin credits stay locked until won. (Old rule "every $1 bet unlocks $1" was exploitable via hedging — removed.)
-- **Settlement**: Local demo engine settles each round automatically in the UI (ball lands → result modal → next round). Backend `POST /settle` remains permissionless but is not called by the current UI flow.
-- **Jackpot**: Accumulates 1% of all bets; 1 in 2,076 chance per settle; full vault paid to winners, then reset
-- **Auto-Bet**: Prepay up to 1,440 rounds
-- **Payments**: In-app deposit (MMK via Kpay/Wave/Ayapay → coin packages) and withdrawal forms styled like the game UI; every request recorded as a `PaymentRequest` shown in each user's Profile history (PENDING/APPROVED/REJECTED)
-- **Telegram Mini App**: Runs inside Telegram (`@twa-dev/sdk`) — passwordless auto-login from `initDataUnsafe.user`, haptics on tabs/bets/wins, safe-area-aware nav; plain-browser fallback fully functional on one side; auto-fires one bet per betting round; cancellable anytime but current round stays committed
+- **Withdrawal model (FIXED)**: Split balances — `balance` vs `withdrawableBalance`. **Stakes NEVER create withdrawable**; only settlement WIN payouts, uncontested-round REFUNDs, and rejected-withdrawal refunds do. Top-ups stay locked until won.
+- **Settlement**: **Server-authoritative.** Backend auto-settler settles expired rounds every 3s; UI syncs countdown/pools/results from `GET /round`, waits for verdict ("SETTLING"), then animates the ball toward the server-declared winner and shows the REAL ledger payout.
+- **Jackpot**: Accumulates 1% of all bets; 1-in-2,076 per settle; paid to winners then reset
+- **Auto-Bet**: Prepay up to 1,440 rounds (client-driven loop, one real bet per round; start/cancel reported to audit log)
+- **Payments**: MMK deposit (Kpay/Wave/Ayapay → coin packages) + withdrawal forms; requests reviewed in **admin panel**
+- **Admin panel**: `/admin.html` on the frontend — users, manual credit/debit, payment review, vault, **Live Activity audit feed**, per-user Inspect dossier
+- **Telegram Mini App**: @zeroxduel_bot, menu button → app; passwordless login via **server-verified initData HMAC**; haptics; safe-area nav
 
 ---
 
@@ -178,26 +179,33 @@ cd backend && npx prisma db push && npx prisma generate
 ### Auth Routes (`/api/auth`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST   | `/login` | Username-only login, auto-creates user with 100 balance, returns JWT |
+| POST   | `/login` | Username-only login (browser fallback), auto-creates user with 100 balance, returns JWT. Audits LOGIN |
+| POST   | `/telegram` | Body `{initData}` — verifies Telegram HMAC-SHA256 signature (`lib/telegram.ts`, 24h window, needs TELEGRAM_BOT_TOKEN). Audits LOGIN_TELEGRAM |
 | GET    | `/me`    | Returns `{ id, username, balance, withdrawableBalance, createdAt }` |
 
 ### Game Routes (`/api/game`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET    | `/round` | Optional | Current round state + user's bet (if authed) |
-| POST   | `/bet`   | Required | Deducts balance, **unlocks withdrawable** (min(w+amt, newBal)), fees split 10%/1%. Returns `{ success, bet, newBalance, newWithdrawable }` |
-| POST   | `/settle`| Public | Settle expired round (permissionless) — not called by current UI |
+| GET    | `/round` | Optional | Current round + `userBet` + `lastResult` (latest SETTLED round incl. `myPayout` from WIN ledger entries) |
+| POST   | `/bet`   | Required | Deducts balance only (no unlock). 409 if round just ended. Audits BET w/ balance-after |
+| POST   | `/settle`| Public | Manual settle (auto-settler normally handles this) |
 | GET    | `/my-bets` | Required | User's bet history |
 | GET    | `/transactions` | Required | User's ledger |
 | GET    | `/vault` | Public | Global vault balances |
-| POST   | `/payment-requests` | Required | Submit TOPUP (package/platform/txnRef/screenshot) or WITHDRAW (escrow-deducted immediately; ledger WITHDRAW) |
-| GET    | `/payment-requests` | Required | Own payment history (max 50, newest first) |
+| GET    | `/chat` | Public | Last 50 real chat messages |
+| POST   | `/chat` | Required | Send message (1-140 chars, 1.5s/user rate limit) |
+| GET    | `/recent-bets` | Public | Last 20 bets across all users (Live Bets card) |
+| GET    | `/history` | Public | Last 10 SETTLED rounds (history ribbon) |
+| POST   | `/audit` | Required | Client lifecycle events; type allowlist: AUTO_START, AUTO_CANCEL |
+| GET/POST | `/payment-requests` | Required | Submit/list TOPUP/WITHDRAW (WITHDRAW escrows instantly). Business errors → 400 with message |
 
 ### Admin Routes (`/api/admin`) - requires `x-admin-secret` header
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST   | `/topup` | Credit/debit user balance (CREDIT = locked funds, does NOT touch withdrawable) |
+| POST   | `/topup` | Body `{username, amount, type: CREDIT\|DEBIT}` — adjusts balance (CREDIT stays locked) |
 | GET    | `/users` | List users |
+| GET    | `/users/:id` | **Inspect dossier**: user + last 100 bets/ledger/payments + audits + chat messages |
+| GET    | `/audit?limit=` | Global audit feed (newest first, max 500) |
 | GET    | `/rounds` | List rounds with bets |
 | GET    | `/vault` | View vault |
 | GET    | `/payment-requests` | All payment requests (with usernames) |
@@ -205,36 +213,21 @@ cd backend && npx prisma db push && npx prisma generate
 
 ### Game Logic Flow (backend)
 
-**Constants** (`gameService.ts:6-9`): `HOUSE_FEE_RATE=0.10`, `JACKPOT_FEE_RATE=0.01`, `NET_POOL_RATE=0.89`, `JACKPOT_ODDS=2076`
+**Constants** (`gameService.ts`): `ROUND_DURATION=60`, `HOUSE_FEE_RATE=0.10`, `JACKPOT_FEE_RATE=0.01`, `NET_POOL_RATE=0.89`, `JACKPOT_ODDS=2076`
 
-**Bet Placement** (`gameService.placeBet()`)
-1. Validate active round not expired
-2. Check user balance ≥ bet amount
-3. Transaction:
-   - `newBalance = user.balance - amount`
-   - `newWithdrawable = min(user.withdrawableBalance + amount, newBalance)` ← play-to-unlock
-   - Create Bet record
-   - Increment round.totalMessi or totalRonaldo
-   - Create LedgerTransaction (type: BET)
-   - Update GlobalVault: **+10% houseFee, +1% jackpotFee**
+**Settler loop** (`index.ts`): every 3s calls `GameService.settleRound()` — settles one expired round per tick (SETTLED w/ random 50-50 winner + jackpot roll, or CANCELLED+refunds if uncontested), then auto-creates the next round. Audits ROUND_SETTLED / ROUND_CANCELLED + WIN/LOSS/REFUND per bet.
 
-**Settlement** (`gameService.settleRound()`)
-1. Find ACTIVE round where `endTimestamp <= now`
-2. If uncontested (one pool = 0) → CANCELLED, full refunds (restore balance AND withdrawable)
-3. Else: 50/50 random winner, 1/**2076** jackpot roll
-4. Net pool = **89%** of total bets + jackpot amount (if hit)
-5. Distribute proportionally to winning side bets — payouts increment BOTH balance and withdrawableBalance
-6. Update round: status=SETTLED, winner, jackpotHit, jackpotWonAmount
-7. Reset jackpot vault if hit
-8. Create next round automatically
+**Bet Placement** (`gameService.placeBet()`): validates active round, deducts balance only, creates Bet + ledger BET + fees to vault, audits BET.
 
-### Frontend Round Engine (`GamePage.tsx`) — authoritative for UI
-Local state machine independent of backend polling (useGame polling was REMOVED — it stomped phase state):
-- `betting` (30s countdown w/ header progress bar) → timer hits 0 OR "Demo Drop" clicked → `dropping`
-- `BallDropCanvas` spawns golden ball at top of pegboard → bounces through pegs → lands left(MESSI)/right(RONALDO)
-- `onBallLanded` → confetti + win sound → `finished` + RoundResultModal (local payout math uses 0.96 multiplier — see Known Quirks)
-- After ~4.5s modal closes → fresh `betting` round, pools reseeded, roundId+1
-- Auto-bet effect fires one escrowed bet per new betting round (guarded by `autoPlacedRoundRef` roundId check)
+**Settlement** (`gameService.settleRound()`): uncontested → CANCELLED full refunds; else 50/50 winner, jackpot roll, winners share 89% pool proportionally (credits balance AND withdrawable), audits everything.
+
+**UI Round Engine** (`GamePage.tsx`) — server-authoritative:
+- Polls `/round` every 1.4s (pools, deadline, own open-bet restore, lastResult)
+- Local 500ms ticker counts down against server deadline; at 0 → phase `dropping`, waits for verdict
+- While dropping: 1.2s rush-poll; when `lastResult.roundId` matches pending round → `forcedWinner` set
+- `BallDropCanvas` spawns the ball only once verdict arrives (launch bias + gentle steering toward winning side); landing reports forced side
+- Result modal shows REAL payout from `myPayout`; balances re-synced via `refreshAuth()`; failed bets revert all optimistic state and show a red toast
+- Chat/bets/history poll on separate intervals (4s/5s/15s)
 
 ---
 
@@ -389,11 +382,11 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 
 ### Current Configuration
 - **Frontend port**: 5173 (dev server usually started with `--force`)
-- **Round duration**: 30 seconds (backend `ROUND_DURATION`; frontend resets `setTimeLeft(30)`)
+- **Round duration**: **60 seconds** (backend `ROUND_DURATION=60`; frontend syncs to server deadline, resets `setTimeLeft(60)`)
 - **Fees**: 10% house / 1% jackpot / 89% pool (`gameService.ts:6-8`)
 - **Jackpot odds**: 1-in-2076 (`gameService.ts:9`)
 - **Build**: `npm run build` passes (tsc strict + verbatimModuleSyntax + noUnusedLocals)
-- **Known quirks**: UI display multipliers use hardcoded 0.96 (4% edge) — slightly understates the real 89%-pool backend payouts; backend settle endpoint not wired into UI loop; `useGame` hook dormant
+- **Known quirks / watch-outs (post server-authoritative rework)**: browser username login is still unauthenticated (only Telegram path verifies identity) — gate before real payouts; AUTO_START/AUTO_CANCEL audit events are client-reported (money movements are server-side and cannot be faked); chat rate limit 1.5s/user; `useGame` hook dormant; old Vercel project `game1` (game1-tawny-gamma.vercel.app) still live with stale branding — safe to delete
 
 ---
 
@@ -474,3 +467,64 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - Haptics wired: light impact on tab switches, preset chips, ½/2×/MAX, confirm-modal open; success on bet placed + round won; warning on lost round + confirm blocked by phase flip
 - BottomTabBar bottom padding `calc(0.625rem + env(safe-area-inset-bottom))` for Telegram gesture bar
 - Browser fallback verified: all helpers no-op when `window.Telegram` absent; login screen still shown normally
+
+---
+
+## 9. Session 2 Changelog (2026-08-23) — production launch + real-money integrity
+
+### Railway backend fixed & deployed
+- Root cause of all 500s: cloud DB never got schema updates (local used `db push`, deploys didn't)
+- Start command now: `cd backend && npx prisma db push --accept-data-loss && node dist/index.js` (must `cd backend` — Prisma 7 needs `prisma.config.ts` for DATABASE_URL)
+- ⚠️ Railway "Redeploy" reuses old config snapshot — config changes need a fresh git-push deployment
+- CORS: multi-origin FRONTEND_URL (comma-split), explicit allowedHeaders `['Content-Type','Authorization','x-admin-secret']` — **Authorization was accidentally dropped once and broke all browser auth; never remove it**
+
+### Telegram Mini App launched
+- Bot @zeroxduel_bot (token on Railway as TELEGRAM_BOT_TOKEN); name "0XDUEL", menu button "PLAY 0XDUEL" → https://0xduel.vercel.app (set via Bot API)
+- Server-verified login: POST /auth/telegram validates initData HMAC (`backend/src/lib/telegram.ts`); frontend auto-login prefers initData, username fallback only when absent
+
+### Frontend redeployed as 0XDUEL on Vercel
+- New Vercel project `0xduel` → https://0xduel.vercel.app (old project game1 still live, stale)
+- Deploys via CLI from repo ROOT (`vercel --prod --yes`); root `.vercel/project.json` links 0xduel
+- API URL baked via `frontend/.env.production` (gitignored — exists only locally; CLI deploys include it)
+- Branding: header BallMark logo (SVG mask ball on gradient tile) + PNGs in `public/` (logo-ball/512/192/apple-touch-icon, favicon.svg); bet presets 100/1K/10K/100K default 100
+
+### Admin panel (/admin.html)
+- Secret-gated static page; sessionStorage persistence
+- Users list w/ Inspect dossier (bets/ledger/audits/payments/chat per user), manual CREDIT/DEBIT, payment review w/ receipt previews, vault stats, Live Activity audit feed (5s auto-refresh)
+- ADMIN_SECRET rotated this session (owner holds the value)
+
+### Real data + anti-cheat audit
+- Removed ALL mock/simulated data: chat seeds, bot chatter, fake rival bets, whale alerts, fake history, "142 online", Demo Drop button, "Matter.js 2D Physics" badge
+- Chat is real: `ChatMessage` model + GET/POST /game/chat (140 chars, 1.5s rate limit)
+- AuditEvent model logs BET (w/ balance-after), WIN, LOSS, REFUND, ROUND_SETTLED/CANCELLED, LOGIN(_TELEGRAM), AUTO_START/AUTO_CANCEL
+
+### Economy integrity fixes
+- Withdrawable only from payouts/refunds — stakes no longer unlock (hedge exploit removed)
+- Rounds 60s everywhere
+- Pools start at 0 with honest empty state; multipliers show true 0.89 rate
+- Failed bets now revert optimistic state + red error toast (no more phantom balances)
+
+### Server-authoritative loop
+- Backend settler every 3s; UI syncs from /round (1.4s poll, 1.2s during drop)
+- Ball waits for verdict ("SETTLING"), steers to server winner, modal shows real ledger payout
+- Verified contested round end-to-end: WIN +35.60 credited, audits + history populated
+
+## 10. Next Session — start here
+
+**Verify health (30s):**
+```bash
+curl https://backend-production-5be2b.up.railway.app/api/health
+curl -s https://0xduel.vercel.app/ | rg -o '<title>[^<]+'
+# admin: https://0xduel.vercel.app/admin.html (secret = owner-held, set 2026-08-23)
+```
+
+**Deploy changes:** backend/frontend code → `git push origin main` (Railway auto-deploys). Frontend ALSO needs `vercel --prod --yes` from repo root (NOT git-linked).
+
+**Known gaps / likely next tasks:**
+1. Browser `/login` still trusts any username — restrict or verify before real payouts matter
+2. Old Vercel project `game1` deletable; `useGame` hook dormant (candidate for deletion)
+3. No jackpot win celebration path tested live yet (jackpotHit flow)
+4. Auto-bet escrow is client-side only across rounds; consider server-side auto-bet sessions if users report abuse
+5. If schema changes: rely on deploy-time `prisma db push` (already wired); local dev still `cd backend && npx prisma db push && npx prisma generate`
+6. GEMINI_API_KEY on this machine is suspended (image-gen blocked); ip-as-logo skill installed at `.claude/skills/ip-as-logo/` if a working key appears
+7. Test accounts on prod: timevault_team ($10,100 locked), e2e_tester, yuta, deploycheck — prune before marketing
