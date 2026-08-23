@@ -42,8 +42,15 @@ router.post('/bet', authenticateToken, authAsyncHandler(async (req: Authenticate
     return res.status(400).json({ error: 'Invalid bet amount' });
   }
 
-  const result = await GameService.placeBet(req.user!.userId, { selection, amount });
-  res.json({ success: true, bet: result.bet, newBalance: result.newBalance, newWithdrawable: result.newWithdrawable });
+  try {
+    const result = await GameService.placeBet(req.user!.userId, { selection, amount });
+    res.json({ success: true, bet: result.bet, newBalance: result.newBalance, newWithdrawable: result.newWithdrawable });
+  } catch (err: any) {
+    if (err instanceof Error && err.message === 'No active round available') {
+      return res.status(409).json({ error: 'Round just ended — try again in a moment' });
+    }
+    throw err;
+  }
 }));
 
 router.post('/settle', asyncHandler(async (req: Request, res: Response) => {

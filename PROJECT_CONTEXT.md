@@ -2,7 +2,7 @@
 
 ## 1. Project Overview & Intent
 
-**Messi vs Ronaldo / CLASHDROP** - Web2 mobile-first prediction pool game with 2D Matter.js physics animations.
+**Messi vs Ronaldo / 0XDUEL** (formerly CLASHDROP) - Web2 mobile-first prediction pool game with 2D Matter.js physics animations.
 
 - **Core mechanic**: Users bet on Messi or Ronaldo in 30-second rounds (configurable, was 5 min)
 - **UI**: Rebuilt around an AI Studio "clash-ball-drop" mobile design — dark theme (`#05070A`/`#0D1117`/`#161B22` cards, amber accents), bottom tab nav, player cutout buttons
@@ -343,12 +343,19 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - **Start command**: `cd backend && npx prisma db push --accept-data-loss && node dist/index.js`
   — syncs the Prisma schema to the cloud DB on EVERY boot (Prisma 7 needs `cd backend` so it finds `prisma.config.ts`, which supplies DATABASE_URL from env; schema has no `url` line)
 - ⚠️ Railway "Redeploy" REUSES the old deployment's config snapshot — start-command/pre-deploy changes only apply on a fresh deployment triggered by a git push (empty commit works)
-- Env vars set on service: ADMIN_SECRET, DATABASE_URL (→ Postgres), FRONTEND_URL, JWT_SECRET, NODE_ENV=production, PORT=3001
+- Env vars: ADMIN_SECRET, DATABASE_URL (→ Postgres), FRONTEND_URL (comma-separated multi-origin list), JWT_SECRET, NODE_ENV=production, PORT=3001, TELEGRAM_BOT_TOKEN
 
-**Frontend → Vercel** (project `game1`)
-- URL: `https://game1-tawny-gamma.vercel.app`; deployed via Vercel CLI (`vercel.json`: vite build from `frontend/`) — NOT git-linked
-- Bundle bakes `VITE_API_URL=https://backend-production-5be2b.up.railway.app/api`
-- Backend CORS (`FRONTEND_URL`) verified to allow the Vercel origin
+**Frontend → Vercel** (project `0xduel`) — https://0xduel.vercel.app
+- Deployed via Vercel CLI from repo root (`vercel --prod`; root `.vercel/project.json` now links project `0xduel`). NOT git-linked.
+- `vercel.json` at root: services.frontend → `frontend/`, vite
+- API URL baked at build time via `frontend/.env.production` (`VITE_API_URL=https://backend-production-5be2b.up.railway.app/api`) — note `.env*` is gitignored, so this file exists only locally; CLI deploys include it. Old project `game1` (game1-tawny-gamma.vercel.app) still live but stale branding.
+- Backend CORS verified for both vercel origins
+
+**Telegram Mini App → @zeroxduel_bot**
+- Bot name "0XDUEL", description set; Menu Button = web_app "PLAY 0XDUEL" → https://0xduel.vercel.app (configured via Bot API `setChatMenuButton`)
+- **Verified server-side login**: `POST /api/auth/telegram {initData}` verifies Telegram HMAC-SHA256 signature (`backend/src/lib/telegram.ts`, secret = HMAC("WebAppData", botToken), 24h auth_date window) → finds/creates user by username or `tg_<id>` → returns JWT
+- Frontend auto-login prefers `getInitData()` verified path; falls back to legacy username login only if initData absent
+- Tampered-signature rejection verified via curl
 
 ### Current Configuration
 - **Frontend port**: 5173 (dev server usually started with `--force`)
