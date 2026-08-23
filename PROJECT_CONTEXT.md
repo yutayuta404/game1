@@ -372,6 +372,13 @@ VALUES (gen_random_uuid(), extract(epoch from now())::int,
 - NOTE: backend rounds still never settle automatically (`POST /settle` exists but uncalled) → history stays [] and expired rounds pile up until something calls settle
 - **Ball logo**: header Flame → `BallMark` SVG (white disc, pentagon+seams knocked out via mask); assets: `public/logo-ball.svg`, `logo-ball.png` (1024), `logo-512.png`, `logo-192.png`, `apple-touch-icon.png`, favicon.svg now ball-on-gradient tile
 
+### Anti-cheat audit + honest pools (2026-08-23)
+- **Rounds now 60s** everywhere (backend `ROUND_DURATION=60`, frontend `ROUND_SECONDS`, resets, mm:ss format)
+- **Pools start at 0 — no fake seeds**: removed local seed generation; PoolBar/BettingPad show `—` multipliers + "No bets yet — be the first" empty state until real bets land
+- **AuditEvent model**: every action logged — BET (with balance-after), WIN/LOSS per settled round (payout amounts), REFUND (uncontested rounds), LOGIN / LOGIN_TELEGRAM, AUTO_START / AUTO_CANCEL (reported by client via `POST /api/game/audit`, type-allowlisted)
+- **Admin panel**: new "Live Activity" card (auto-refresh 5s, all audit events) + per-user **Inspect** modal (`GET /api/admin/users/:id`) showing bets, full ledger, audit timeline, payments & chat history
+- Ball logo disc enlarged r300→r372 (PNGs regenerated)
+
 ### Current Configuration
 - **Frontend port**: 5173 (dev server usually started with `--force`)
 - **Round duration**: 30 seconds (backend `ROUND_DURATION`; frontend resets `setTimeLeft(30)`)
