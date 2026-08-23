@@ -17,7 +17,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'x-admin-secret']
 }));
 app.use(express.json());
 

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex,nofollow" />
+<title>0XDUEL Admin</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  body { background:#05070A; color:#E6EDF3; min-height:100vh; padding:24px 16px 80px; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size:22px; font-weight:800; letter-spacing:.02em; margin-bottom:4px; }
+  h1 span { color:#F59E0B; }
+  .sub { color:#8B949E; font-size:13px; margin-bottom:20px; }
+  .card { background:#0D1117; border:1px solid #21262D; border-radius:14px; padding:16px; margin-bottom:16px; }
+  .card h2 { font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:#F59E0B; margin-bottom:12px; }
+  input, select, button { border-radius:10px; font-size:14px; }
+  input, select { background:#161B22; border:1px solid #30363D; color:#E6EDF3; padding:9px 12px; outline:none; }
+  input:focus, select:focus { border-color:#F59E0B; }
+  button { background:linear-gradient(135deg,#F59E0B,#D97706); border:none; color:#05070A; font-weight:700; padding:9px 16px; cursor:pointer; }
+  button.ghost { background:#21262D; color:#E6EDF3; }
+  button.green { background:linear-gradient(135deg,#10B981,#059669); }
+  button.red { background:linear-gradient(135deg,#EF4444,#DC2626); color:#fff; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:#8B949E; font-weight:600; padding:8px 6px; border-bottom:1px solid #21262D; }
+  td { padding:8px 6px; border-bottom:1px solid #161B22; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+  .pill.PENDING { background:#78350F; color:#FBBF24; }
+  .pill.APPROVED { background:#064E3B; color:#34D399; }
+  .pill.REJECTED { background:#7F1D1D; color:#FCA5A5; }
+  .pill.TOPUP { background:#1E3A5F; color:#7DD3FC; }
+  .pill.WITHDRAW { background:#3B1E5F; color:#C4B5FD; }
+  .amt { width:90px; }
+  .muted { color:#8B949E; }
+  .err { color:#FCA5A5; font-size:13px; margin-top:8px; min-height:18px; }
+  .ok { color:#34D399; font-size:13px; margin-top:8px; min-height:18px; }
+  .stat { display:inline-block; margin-right:24px; }
+  .stat b { font-size:20px; color:#FBBF24; }
+  #gate { max-width:380px; margin:15vh auto 0; text-align:center; }
+  #gate input { width:100%; margin:14px 0; text-align:center; }
+  #gate button { width:100%; }
+  .shot { max-width:120px; max-height:120px; border-radius:8px; border:1px solid #30363D; cursor:pointer; }
+  @media (max-width:640px) { table { font-size:12px; } .hide-sm { display:none; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app" style="display:none">
+  <h1>0X<span>DUEL</span> Admin</h1>
+  <div class="sub">Signed in &nbsp;·&nbsp; <button class="ghost" id="logout" style="padding:4px 10px;font-size:12px">Lock</button></div>
+
+  <div class="card"><h2>Vault</h2><div id="vault" class="muted">…</div></div>
+
+  <div class="card">
+    <h2>Users</h2>
+    <div class="row" style="margin-bottom:10px">
+      <input id="userFilter" placeholder="Filter by username…" style="flex:1;min-width:160px" />
+      <button class="ghost" id="reloadUsers">Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>User</th><th>Balance</th><th class="hide-sm">Withdrawable</th><th>Adjust funds</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input id="adjUser" placeholder="username" style="width:140px" />
+      <input id="adjAmount" type="number" step="any" min="0" placeholder="amount" class="amt" />
+      <button id="doCredit">+ Credit</button>
+      <button class="red" id="doDebit">− Debit</button>
+      <span class="muted" style="font-size:12px">Credit adds locked coins · Debit removes coins</span>
+    </div>
+    <div class="err" id="adjErr"></div><div class="ok" id="adjOk"></div>
+  </div>
+
+  <div class="card">
+    <h2>Payment Requests</h2>
+    <button class="ghost" id="reloadPay" style="margin-bottom:10px">Refresh</button>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>User</th><th>Type</th><th>Coins</th><th class="hide-sm">Platform / Ref</th><th class="hide-sm">Receipt</th><th>Status</th><th>Review</th></tr></thead>
+        <tbody id="payBody"></tbody>
+      </table>
+    </div>
+    <div class="err" id="payErr"></div>
+  </div>
+</div>
+
+<div id="gate">
+  <h1>0X<span>DUEL</span> Admin</h1>
+  <p class="sub">Enter the admin secret to continue</p>
+  <input id="secretInput" type="password" placeholder="admin secret" autocomplete="off" />
+  <button id="unlock">Unlock</button>
+  <div class="err" id="gateErr"></div>
+</div>
+
+<script>
+const API = 'https://backend-production-5be2b.up.railway.app/api';
+let SECRET = sessionStorage.getItem('duel_admin_secret') || '';
+
+const $ = (id) => document.getElementById(id);
+async function call(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'x-admin-secret': SECRET, ...(opts.headers || {}) },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadVault() {
+  try {
+    const { vault } = await call('/admin/vault');
+    $('vault').innerHTML = `<span class="stat">House fees <b>${(+vault.houseFeeBalance).toFixed(2)}</b></span><span class="stat">Jackpot vault <b>${(+vault.jackpotVaultBalance).toFixed(2)}</b></span>`;
+  } catch (e) { $('vault').textContent = e.message; }
+}
+
+async function loadUsers() {
+  const f = $('userFilter').value.trim().toLowerCase();
+  const { users } = await call('/admin/users');
+  $('usersBody').innerHTML = users
+    .filter(u => !f || u.username.toLowerCase().includes(f))
+    .map(u => `<tr><td>${esc(u.username)}</td><td><b>${(+u.balance).toFixed(2)}</b></td><td class="hide-sm">${(+u.withdrawableBalance).toFixed(2)}</td><td><button class="ghost" onclick="quick('${esc(u.username)}')">Select</button></td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">No users</td></tr>';
+}
+
+window.quick = (username) => { $('adjUser').value = username; $('adjAmount').focus(); };
+
+async function adjust(type) {
+  $('adjErr').textContent = ''; $('adjOk').textContent = '';
+  try {
+    const r = await call('/admin/topup', { method:'POST', body: JSON.stringify({ username: $('adjUser').value.trim(), amount: Number($('adjAmount').value), type }) });
+    $('adjOk').textContent = `${type === 'CREDIT' ? 'Credited' : 'Debited'} — ${esc(r.user.username)} now has ${(+r.user.balance).toFixed(2)} coins`;
+    loadUsers(); loadVault();
+  } catch (e) { $('adjErr').textContent = e.message; }
+}
+
+async function loadPayments() {
+  try {
+    const { requests } = await call('/admin/payment-requests');
+    $('payBody').innerHTML = requests.map(r => `<tr>
+      <td>${esc(r.username)}</td>
+      <td><span class="pill ${r.type}">${r.type}</span></td>
+      <td><b>${(+r.coins).toFixed(0)}</b></td>
+      <td class="hide-sm">${esc(r.platform || '')}${r.txnRef ? ' · ' + esc(r.txnRef) : ''}</td>
+      <td class="hide-sm">${r.screenshot ? `<img class="shot" src="${esc(r.screenshot)}" onclick="window.open(this.src)" />` : '<span class="muted">—</span>'}</td>
+      <td><span class="pill ${r.status}">${r.status}</span></td>
+      <td>${r.status === 'PENDING' ? `<button class="green" onclick="review('${r.id}',true)">Approve</button> <button class="red" onclick="review('${r.id}',false)">Reject</button>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="muted">No payment requests</td></tr>';
+  } catch (e) { $('payErr').textContent = e.message; }
+}
+window.review = async (id, approve) => {
+  $('payErr').textContent = '';
+  try { await call(`/admin/payment-requests/${id}/review`, { method:'POST', body: JSON.stringify({ approve }) }); loadPayments(); loadUsers(); loadVault(); }
+  catch (e) { $('payErr').textContent = e.message; }
+};
+
+function show() {
+  $('gate').style.display = 'none'; $('app').style.display = 'block';
+  loadVault(); loadUsers(); loadPayments();
+}
+$('unlock').onclick = async () => {
+  SECRET = $('secretInput').value.trim();
+  $('gateErr').textContent = '';
+  try { await call('/admin/users'); sessionStorage.setItem('duel_admin_secret', SECRET); show(); }
+  catch (e) { $('gateErr').textContent = 'Invalid secret'; }
+};
+$('secretInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('unlock').click(); });
+$('logout').onclick = () => { sessionStorage.removeItem('duel_admin_secret'); location.reload(); };
+$('reloadUsers').onclick = loadUsers;
+$('reloadPay').onclick = loadPayments;
+$('userFilter').addEventListener('input', loadUsers);
+$('doCredit').onclick = () => adjust('CREDIT');
+$('doDebit').onclick = () => adjust('DEBIT');
+
+if (SECRET) { call('/admin/users').then(show).catch(() => {}); }
+</script>
+</body>
+</html>
