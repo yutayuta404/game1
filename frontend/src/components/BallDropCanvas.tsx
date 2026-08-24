@@ -333,16 +333,19 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         ballBodyRef.current = null;
       }
 
-      // Always spawn from the CENTER dispenser — then gently steer to server winner
-      const spawnJitter = (Math.random() - 0.5) * 6;
+      // Always spawn from the CENTER dispenser — then steer to server winner
+      // Keep spawn centered (user request) but give initial push toward winner so visual matches result
+      const spawnJitter = (Math.random() - 0.5) * 8;
       const ball = Matter.Bodies.circle(width * 0.5 + spawnJitter, 18, 9, {
         restitution: 0.58,
         friction: 0.04,
-        frictionAir: 0.016,
+        frictionAir: 0.014,
         density: 0.015,
         label: 'ball',
       });
-      Matter.Body.setVelocity(ball, { x: (Math.random() - 0.5) * 0.75, y: 0.65 });
+      const winnerBias = forcedWinner === 'messi' ? -0.75 : 0.75;
+      const randomJitter = (Math.random() - 0.5) * 0.5;
+      Matter.Body.setVelocity(ball, { x: winnerBias + randomJitter, y: 0.55 });
 
       ballBodyRef.current = ball;
       Matter.Composite.add(engineRef.current.world, ball);
@@ -369,11 +372,13 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         return;
       }
       const dx = targetX - ball.position.x;
+      // Stronger corrective push so the ball reliably ends on the server side
+      // (fixes “ball to Ronaldo but result Messi” mismatch)
       Matter.Body.setVelocity(ball, {
-        x: Math.max(-1.9, Math.min(1.9, ball.velocity.x + Math.sign(dx) * 0.042)),
+        x: Math.max(-2.6, Math.min(2.6, ball.velocity.x + Math.sign(dx) * 0.095)),
         y: ball.velocity.y,
       });
-    }, 65);
+    }, 45);
     return () => clearInterval(steer);
   }, [forcedWinner]);
 
