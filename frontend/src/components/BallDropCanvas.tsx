@@ -62,8 +62,10 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
 
     const { Engine, Bodies, Composite, Events } = Matter;
     const engine = Engine.create({
-      gravity: { x: 0, y: 0.55 }, // slowed for suspenseful drop
+      gravity: { x: 0, y: 0.32 }, // extra slow suspenseful drop
     });
+    // Global time scale — 0.65x makes every bounce/hang linger
+    (engine.timing as any).timeScale = 0.65;
     engineRef.current = engine;
 
     const world = engine.world;
@@ -115,8 +117,8 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         const y = startY + row * pegSpacingY;
         pegs.push(Bodies.circle(x, y, pegRadius, {
           isStatic: true,
-          restitution: 0.75,
-          friction: 0.02,
+          restitution: 0.62,
+          friction: 0.04,
           label: 'peg',
         }));
       }
@@ -335,13 +337,13 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       // Launch from the winning side's half so the drift looks natural
       const bias = forcedWinner === 'messi' ? -0.18 : 0.18;
       const ball = Matter.Bodies.circle(width * (0.5 + bias), 18, 9, {
-        restitution: 0.72,
-        friction: 0.02,
-        frictionAir: 0.008,
-        density: 0.04,
+        restitution: 0.55,
+        friction: 0.03,
+        frictionAir: 0.018,
+        density: 0.015,
         label: 'ball',
       });
-      Matter.Body.setVelocity(ball, { x: (Math.random() - 0.5) * 1.5, y: 1 });
+      Matter.Body.setVelocity(ball, { x: (Math.random() - 0.5) * 0.8, y: 0.45 });
 
       ballBodyRef.current = ball;
       Matter.Composite.add(engineRef.current.world, ball);
@@ -357,7 +359,7 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
     }
   }, [phase, forcedWinner]);
 
-  // Steer the live ball toward the server-declared side while it falls
+  // Steer the live ball gently toward the server-declared side while it falls
   useEffect(() => {
     if (!forcedWinner || !ballBodyRef.current || !engineRef.current) return;
     const width = canvasRef.current?.width || 360;
@@ -370,10 +372,10 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       }
       const dx = targetX - ball.position.x;
       Matter.Body.setVelocity(ball, {
-        x: Math.max(-3, Math.min(3, ball.velocity.x + Math.sign(dx) * 0.09)),
+        x: Math.max(-2, Math.min(2, ball.velocity.x + Math.sign(dx) * 0.045)),
         y: ball.velocity.y,
       });
-    }, 50);
+    }, 70);
     return () => clearInterval(steer);
   }, [forcedWinner]);
 
