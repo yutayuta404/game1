@@ -29,38 +29,44 @@ router.get('/round', optionalAuth, asyncHandler(async (req: AuthenticatedRequest
     }
   }
 
-  // Most recent settled round + this user's real payout for it (drives the UI result)
-  const lastSettled = await prisma.round.findFirst({
-    where: { status: 'SETTLED' },
+  // Most recent finished round (SETTLED or CANCELLED) + this user's real payout/refund
+  // Must include CANCELLED so the client can drop the ball for uncontested rounds
+  // (previously filtered to SETTLED only → ball hung on "SETTLING" forever for refunds).
+  const lastFinished = await prisma.round.findFirst({
+    where: { status: { in: ['SETTLED', 'CANCELLED'] } },
     orderBy: { endTimestamp: 'desc' },
   });
 
   let lastResult: any = null;
-  if (lastSettled) {
+  if (lastFinished) {
     let myPayout: number | null = null;
     if (req.user) {
       const myBets = await prisma.bet.findMany({
-        where: { userId: req.user.userId, roundId: lastSettled.id },
+        where: { userId: req.user.userId, roundId: lastFinished.id },
         select: { id: true },
       });
       if (myBets.length > 0) {
-        const wins = await prisma.ledgerTransaction.findMany({
+        const txs = await prisma.ledgerTransaction.findMany({
           where: {
             userId: req.user.userId,
-            type: TransactionType.WIN,
+            type: { in: [TransactionType.WIN, TransactionType.REFUND] },
             referenceId: { in: myBets.map((b) => b.id) },
           },
         });
-        myPayout = wins.reduce((s, w) => s + w.amount, 0);
+        const sum = txs.reduce((s, w) => s + w.amount, 0);
+        myPayout = txs.length > 0 ? sum : 0;
+        // For CANCELLED without a WIN/REFUND yet (rare race), distinguish no-bet (null) from refund 0
+        if (txs.length === 0) myPayout = 0;
       }
     }
     lastResult = {
-      roundId: lastSettled.id,
-      winner: lastSettled.winner,
-      totalMessi: lastSettled.totalMessi,
-      totalRonaldo: lastSettled.totalRonaldo,
-      jackpotHit: lastSettled.jackpotHit,
-      endTimestamp: lastSettled.endTimestamp,
+      roundId: lastFinished.id,
+      status: lastFinished.status,
+      winner: lastFinished.winner,
+      totalMessi: lastFinished.totalMessi,
+      totalRonaldo: lastFinished.totalRonaldo,
+      jackpotHit: lastFinished.jackpotHit,
+      endTimestamp: lastFinished.endTimestamp,
       myPayout,
     };
   }

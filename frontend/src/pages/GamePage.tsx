@@ -153,7 +153,7 @@ export default function GamePage() {
 
     const total = messiPoolRef.current + ronaldoPoolRef.current + amount;
     const currentSidePool = (side === 'messi' ? messiPoolRef.current : ronaldoPoolRef.current) + amount;
-    const multiplier = (total * 0.96) / currentSidePool;
+    const multiplier = currentSidePool > 0 ? (total * NET_POOL_RATE_UI) / currentSidePool : 0;
     const estPayout = amount * multiplier;
 
     const newBet: BetItem = {
@@ -169,20 +169,15 @@ export default function GamePage() {
       isUser: true,
     };
 
+    const prevBetSnapshot = userCurrentBetRef.current;
     setActiveBets((prev) => [newBet, ...prev]);
     setUserCurrentBet({
       side,
-      amount: (userCurrentBet?.amount || 0) + amount,
-      estPayout: (userCurrentBet?.estPayout || 0) + estPayout,
+      amount: (prevBetSnapshot?.amount || 0) + amount,
+      estPayout: (prevBetSnapshot?.estPayout || 0) + estPayout,
     });
 
-    const prevBalanceEntry = { userCurrentBet };
-    setActiveBets((prev) => [newBet, ...prev]);
-    setUserCurrentBet({
-      side,
-      amount: (userCurrentBet?.amount || 0) + amount,
-      estPayout: (userCurrentBet?.estPayout || 0) + estPayout,
-    });
+    const prevBalanceEntry = { userCurrentBet: prevBetSnapshot };
 
     // Persist to backend; on failure revert ALL optimistic updates so UI never lies
     try {
@@ -384,6 +379,8 @@ export default function GamePage() {
   const witnessedRoundRef = useRef<string>('');
   const settlePayoutRef = useRef<number | null>(null);
   const seenResultIdRef = useRef<string>('');
+  const droppingPoolsRef = useRef<{ messi: number; ronaldo: number } | null>(null);
+  const droppingStatusRef = useRef<string | null>(null);
   const [forcedWinner, setForcedWinner] = useState<TeamSide | null>(null);
 
   useEffect(() => {
@@ -393,23 +390,31 @@ export default function GamePage() {
     const applyResult = (lastResult: any) => {
       if (!lastResult || lastResult.roundId === seenResultIdRef.current) return;
 
-      // Verdict may land BEFORE our local countdown notices the deadline
-      // (server clock ahead, throttled background timers). If it's for the
-      // round we just watched, jump straight into the drop — otherwise the
-      // rush poll would dismiss it as already-seen and the ball would never
-      // spawn, leaving the UI stuck without a result popup.
+      // Handle normal betting→dropping transition when verdict arrives for the witnessed round
       if (
         phaseRef.current === 'betting' &&
-        witnessedRoundRef.current === lastResult.roundId &&
-        lastResult.winner
+        witnessedRoundRef.current === lastResult.roundId
       ) {
+        // Keep the finished round's pools visible during the drop
+        droppingPoolsRef.current = { messi: lastResult.totalMessi || 0, ronaldo: lastResult.totalRonaldo || 0 };
+        droppingStatusRef.current = lastResult.status || 'SETTLED';
+        setMessiPool(lastResult.totalMessi || 0);
+        setRonaldoPool(lastResult.totalRonaldo || 0);
         pendingDropRoundRef.current = lastResult.roundId;
         settlePayoutRef.current = lastResult.myPayout ?? null;
-        setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+        const w = lastResult.winner;
+        setForcedWinner(w ? (w === 'MESSI' ? 'messi' : 'ronaldo') : (Math.random() < 0.5 ? 'messi' : 'ronaldo'));
         setPhase('dropping');
       } else if (phaseRef.current === 'dropping' && pendingDropRoundRef.current === lastResult.roundId) {
-        settlePayoutRef.current = lastResult.myPayout;
-        setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+        settlePayoutRef.current = lastResult.myPayout ?? settlePayoutRef.current;
+        droppingStatusRef.current = lastResult.status || droppingStatusRef.current;
+        if (lastResult.winner) {
+          setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+        }
+        // Ensure dropping pools reflect the settled round if we missed snapshot
+        if (!droppingPoolsRef.current) {
+          droppingPoolsRef.current = { messi: lastResult.totalMessi || 0, ronaldo: lastResult.totalRonaldo || 0 };
+        }
       }
       seenResultIdRef.current = lastResult.roundId;
     };
@@ -418,23 +423,48 @@ export default function GamePage() {
       try {
         const { round, userBet, lastResult } = await api.getCurrentRound();
         if (stopped) return;
-        // Remember which round we are actually watching live while betting,
-        // so a verdict that races ahead of the countdown can be attributed.
+
+        const prevId = serverRoundIdRef.current;
+        const isNewRound = !!prevId && round.id !== prevId;
+
+        // Race fix: server already created next round before our ticker fired.
+        // The previous round (prevId) has just settled/cancelled and lastResult points to it.
+        // Jump straight to dropping instead of silently snapping to the new 60s countdown.
+        if (isNewRound && lastResult && lastResult.roundId === prevId && phaseRef.current === 'betting') {
+          droppingPoolsRef.current = { messi: lastResult.totalMessi || 0, ronaldo: lastResult.totalRonaldo || 0 };
+          droppingStatusRef.current = lastResult.status || 'SETTLED';
+          setMessiPool(lastResult.totalMessi || 0);
+          setRonaldoPool(lastResult.totalRonaldo || 0);
+          pendingDropRoundRef.current = lastResult.roundId;
+          settlePayoutRef.current = lastResult.myPayout ?? null;
+          seenResultIdRef.current = lastResult.roundId;
+          if (lastResult.winner) setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+          else setForcedWinner(Math.random() < 0.5 ? 'messi' : 'ronaldo');
+          setPhase('dropping');
+          serverRoundIdRef.current = round.id;
+          serverDeadlineRef.current = round.endTimestamp * 1000;
+          witnessedRoundRef.current = round.id;
+          // Keep next round's pools/time for after drop; don't overwrite dropping pools now
+          // But schedule timeLeft for after drop via snapshot
+          return;
+        }
+
+        // Normal witnessed tracking — only while betting and not in a pending drop race
         if (phaseRef.current === 'betting' && round.id !== serverRoundIdRef.current) {
           witnessedRoundRef.current = round.id;
           pendingDropRoundRef.current = null;
           settlePayoutRef.current = null;
+          droppingPoolsRef.current = null;
         }
-        setMessiPool(round.totalMessi || 0);
-        setRonaldoPool(round.totalRonaldo || 0);
+
+        // Only overwrite displayed pools while betting; during dropping/finished keep the drop snapshot visible
+        if (phaseRef.current === 'betting') {
+          setMessiPool(round.totalMessi || 0);
+          setRonaldoPool(round.totalRonaldo || 0);
+        }
         serverDeadlineRef.current = round.endTimestamp * 1000;
 
         // Countdown must be MONOTONIC within a round: device clocks drift
-        // against the server, and re-deriving timeLeft from the raw
-        // timestamp each poll can add skew-seconds back (countdown crawling
-        // upward / snapping to :59 mid-round). Only a genuinely new round
-        // may raise the timer.
-        const isNewRound = round.id !== serverRoundIdRef.current;
         const serverSecs = Math.max(0, Math.ceil((round.endTimestamp * 1000 - Date.now()) / 1000));
         if (isNewRound) {
           setTimeLeft(serverSecs);
@@ -446,7 +476,10 @@ export default function GamePage() {
         // Restore an open bet placed earlier in this round (e.g. after reload)
         if (userBet && !userCurrentBetRef.current && phaseRef.current === 'betting') {
           const side: TeamSide = userBet.selection === 'MESSI' ? 'messi' : 'ronaldo';
-          setUserCurrentBet({ side, amount: userBet.amount, estPayout: userBet.amount * 1.9 });
+          const poolForMult = side === 'messi' ? round.totalMessi : round.totalRonaldo;
+          const total = (round.totalMessi || 0) + (round.totalRonaldo || 0);
+          const mult = poolForMult > 0 ? (total * NET_POOL_RATE_UI) / poolForMult : 0;
+          setUserCurrentBet({ side, amount: userBet.amount, estPayout: userBet.amount * mult });
         }
 
         applyResult(lastResult);
@@ -471,6 +504,7 @@ export default function GamePage() {
       });
       if (remainingMs <= 0) {
         pendingDropRoundRef.current = serverRoundIdRef.current;
+        droppingPoolsRef.current = { messi: messiPoolRef.current, ronaldo: ronaldoPoolRef.current };
         setForcedWinner(null);
         setPhase('dropping');
       }
@@ -485,14 +519,25 @@ export default function GamePage() {
       try {
         const { lastResult } = await api.getCurrentRound();
         if (!lastResult) return;
-        seenResultIdRef.current = lastResult.roundId;
-        // Apply the verdict for the round we're dropping on — idempotent,
-        // and NOT gated on the seen-guard so a pre-seen result still lands.
-        if (pendingDropRoundRef.current === lastResult.roundId && lastResult.winner) {
+        // Only mark seen after we have handled it — keep dropping logic idempotent
+        if (pendingDropRoundRef.current === lastResult.roundId) {
           if (settlePayoutRef.current === null || settlePayoutRef.current === undefined) {
-            settlePayoutRef.current = lastResult.myPayout;
+            settlePayoutRef.current = lastResult.myPayout ?? null;
           }
-          setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+          droppingStatusRef.current = lastResult.status || droppingStatusRef.current;
+          if (lastResult.winner) {
+            setForcedWinner(lastResult.winner === 'MESSI' ? 'messi' : 'ronaldo');
+          } else if (!forcedWinner) {
+            // CANCELLED without winner (legacy) — pick random side so ball still drops
+            setForcedWinner(Math.random() < 0.5 ? 'messi' : 'ronaldo');
+          }
+          if (!droppingPoolsRef.current) {
+            droppingPoolsRef.current = { messi: lastResult.totalMessi || 0, ronaldo: lastResult.totalRonaldo || 0 };
+          }
+          seenResultIdRef.current = lastResult.roundId;
+        } else if (lastResult.roundId !== seenResultIdRef.current) {
+          // For other rounds, just mark seen so sync doesn't re-process
+          seenResultIdRef.current = lastResult.roundId;
         }
       } catch { /* keep waiting */ }
     }, 1200);
@@ -512,6 +557,8 @@ export default function GamePage() {
       setForcedWinner(null);
       pendingDropRoundRef.current = null;
       settlePayoutRef.current = null;
+      droppingPoolsRef.current = null;
+      droppingStatusRef.current = null;
     }, 15000);
 
     return () => {
@@ -524,14 +571,25 @@ export default function GamePage() {
   const handleBallLanded = useCallback((winner: TeamSide) => {
     setPhase('finished');
 
-    const total = messiPoolRef.current + ronaldoPoolRef.current;
-    const winPool = winner === 'messi' ? messiPoolRef.current : ronaldoPoolRef.current;
+    // Use the dropping snapshot (preserved across sync's new-round reset) so total/winPool aren't 0
+    const snap = droppingPoolsRef.current;
+    const messiSnap = snap ? snap.messi : messiPoolRef.current;
+    const ronaldoSnap = snap ? snap.ronaldo : ronaldoPoolRef.current;
+    const total = messiSnap + ronaldoSnap;
+    const winPool = winner === 'messi' ? messiSnap : ronaldoSnap;
     const winningMultiplier = winPool > 0 ? (total * NET_POOL_RATE_UI) / winPool : 0;
 
     const bet = userCurrentBetRef.current;
     let userWinnings: number | null = null;
+    const isCancelled = droppingStatusRef.current === 'CANCELLED';
+    // Use server-declared payout; for CANCELLED it's a REFUND regardless of side
     if (bet) {
-      if (bet.side === winner) {
+      if (isCancelled) {
+        // Uncontested → full refund credited via REFUND ledger; myPayout is refund amount
+        userWinnings = settlePayoutRef.current ?? bet.amount;
+        // Refund is not a win but also not a loss — neutral haptic
+        if ((userWinnings ?? 0) > 0) hapticSuccess(); else hapticWarning();
+      } else if (bet.side === winner) {
         userWinnings = settlePayoutRef.current ?? 0;
         hapticSuccess();
       } else {
@@ -548,19 +606,22 @@ export default function GamePage() {
       winner,
       multiplier: winningMultiplier,
       totalPool: total,
-      messiPool: messiPoolRef.current,
-      ronaldoPool: ronaldoPoolRef.current,
+      messiPool: messiSnap,
+      ronaldoPool: ronaldoSnap,
       timestamp: Date.now(),
     }, ...prev.slice(0, 19)]);
 
+    const isCancelledMsg = droppingStatusRef.current === 'CANCELLED';
     setMessages((prev) => [...prev, {
       id: `result-${Date.now()}`,
       type: 'system',
-      text: tRef.current('roundSettledMsg', {
-        side: winner === 'messi' ? 'Team Messi' : 'Team Ronaldo',
-        mult: winningMultiplier.toFixed(2),
-        total: total.toLocaleString(),
-      }),
+      text: isCancelledMsg
+        ? `Round refunded — uncontested pool $${total.toLocaleString()} returned.`
+        : tRef.current('roundSettledMsg', {
+            side: winner === 'messi' ? 'Team Messi' : 'Team Ronaldo',
+            mult: winningMultiplier.toFixed(2),
+            total: total.toLocaleString(),
+          }),
       timestamp: Date.now(),
     }]);
 
@@ -585,6 +646,8 @@ export default function GamePage() {
       setForcedWinner(null);
       pendingDropRoundRef.current = null;
       settlePayoutRef.current = null;
+      droppingPoolsRef.current = null;
+      droppingStatusRef.current = null;
     }, 4500);
   }, []);
 

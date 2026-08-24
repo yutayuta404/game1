@@ -414,12 +414,14 @@ export class GameService {
         });
       }
 
+      // Persist a dummy winner so the client can animate the ball even on refunds
+      const cancelWinner = Math.random() < 0.5 ? WinnerSide.MESSI : WinnerSide.RONALDO;
       await tx.round.update({
-        where: { id: round.id },
-        data: { status: RoundStatus.CANCELLED }
-      });
+          where: { id: round.id },
+          data: { status: RoundStatus.CANCELLED, winner: cancelWinner }
+        });
 
-      await this.createNewRound();
+       await this.createNewRound();
     });
 
     await this.writeAudits([
