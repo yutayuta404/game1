@@ -89,6 +89,7 @@ export const BettingPad: React.FC<BettingPadProps> = ({
   const autoStartable = phase === 'betting' && autoRoundsNum >= 1 && autoCost <= balance && !autoBet;
 
   return (
+    <>
     <div className="w-full bg-[#161B22]/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg select-none space-y-2.5">
       {/* Current Active Round Bet Notification if user already bet */}
       {userCurrentBet && (
@@ -308,15 +309,15 @@ export const BettingPad: React.FC<BettingPadProps> = ({
           <span>{t('insufficientTopUpHint')}</span>
         </div>
       )}
-
-      {/* Bet Confirmation Modal */}
+    </div>
+      {/* Bet Confirmation Modal — outside backdrop-blur container so fixed isn't clipped (fixes overlap over BET buttons) */}
       {pendingBet && (() => {
         const isMessi = pendingBet.side === 'messi';
         const mult = (isMessi ? messiMultiplier : ronaldoMultiplier) ?? 1.9;
         const estWin = pendingBet.amount * mult;
         return (
           <div
-            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+            className="fixed inset-0 z-[80] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setPendingBet(null)}
           >
             <div
@@ -407,10 +408,10 @@ export const BettingPad: React.FC<BettingPadProps> = ({
           </div>
         );
       })()}
-      {/* Auto-Bet Configuration Modal */}
+      {/* Auto-Bet Configuration Modal — outside container */}
       {autoOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+          className="fixed inset-0 z-[80] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setAutoOpen(false)}
         >
           <div
@@ -522,6 +523,6 @@ export const BettingPad: React.FC<BettingPadProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
