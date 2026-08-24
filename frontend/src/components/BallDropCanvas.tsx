@@ -334,9 +334,9 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         ballBodyRef.current = null;
       }
 
-      // Launch from the winning side's half — near-zero initial speed so it hangs at the dispenser
-      const bias = forcedWinner === 'messi' ? -0.18 : 0.18;
-      const ball = Matter.Bodies.circle(width * (0.5 + bias), 18, 9, {
+      // Always spawn from the CENTER dispenser — then gently steer to server winner
+      const spawnJitter = (Math.random() - 0.5) * 6; // tiny randomness so peg hits vary
+      const ball = Matter.Bodies.circle(width * 0.5 + spawnJitter, 18, 9, {
         restitution: 0.42,
         friction: 0.06,
         frictionAir: 0.028,
