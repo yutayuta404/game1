@@ -135,7 +135,8 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
           {/* ===== TOPUP ONLY ===== */}
           {isTopup && (
             <>
-              <div>
+              {/* Payment merchant info hidden per request */}
+              <div className="hidden">
                 <SectionLabel>{t('paymentInfo')}</SectionLabel>
                 <p className="text-gray-500 text-xs font-mono -mt-0.5">
                   {t('nameLabel')} Nyein Chan Latt · {t('payNoLabel')}&nbsp;<span className="text-amber-400">09260096272</span>
@@ -201,7 +202,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
                   className={inputCls}
                 />
                 <p className="text-[10px] text-gray-500 mt-1">
-                  {t('txnHint', { phone: '09260096272' })}
+                  {t('txnHint', { phone: 'your selected platform' })}
                 </p>
               </div>
 
@@ -318,7 +319,7 @@ export const PaymentFormModal: React.FC<PaymentFormModalProps> = ({
               {isTopup ? (
                 <>
                   <p className="font-bold text-white">{t('topupProcessTitle')}</p>
-                  <p>{t('topupStep1', { phone: '09260096272' })}</p>
+                  <p>* Send MMK via your selected platform</p>
                   <p>{t('topupStep2')}</p>
                   <p>{t('topupStep3')}</p>
                   <p>{t('topupStep4')}</p>
