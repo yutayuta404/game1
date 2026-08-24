@@ -62,10 +62,10 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
 
     const { Engine, Bodies, Composite, Events } = Matter;
     const engine = Engine.create({
-      gravity: { x: 0, y: 0.32 }, // extra slow suspenseful drop
+      gravity: { x: 0, y: 0.18 }, // ultra-slow suspenseful drop — slow initial fall
     });
-    // Global time scale — 0.65x makes every bounce/hang linger
-    (engine.timing as any).timeScale = 0.65;
+    // Global time scale — 0.5x makes hang/bounce linger (heavily slows early acceleration)
+    (engine.timing as any).timeScale = 0.52;
     engineRef.current = engine;
 
     const world = engine.world;
@@ -73,8 +73,8 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
     // ---- Static world (walls, funnels, pegboard) built ONCE ----
     const wallOptions: Matter.IChamferableBodyDefinition = {
       isStatic: true,
-      restitution: 0.6,
-      friction: 0.05,
+      restitution: 0.45,
+      friction: 0.08,
     };
 
     const funnelLeft = Bodies.rectangle(
@@ -117,8 +117,8 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         const y = startY + row * pegSpacingY;
         pegs.push(Bodies.circle(x, y, pegRadius, {
           isStatic: true,
-          restitution: 0.62,
-          friction: 0.04,
+          restitution: 0.52,
+          friction: 0.06,
           label: 'peg',
         }));
       }
@@ -334,16 +334,16 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
         ballBodyRef.current = null;
       }
 
-      // Launch from the winning side's half so the drift looks natural
+      // Launch from the winning side's half — near-zero initial speed so it hangs at the dispenser
       const bias = forcedWinner === 'messi' ? -0.18 : 0.18;
       const ball = Matter.Bodies.circle(width * (0.5 + bias), 18, 9, {
-        restitution: 0.55,
-        friction: 0.03,
-        frictionAir: 0.018,
-        density: 0.015,
+        restitution: 0.42,
+        friction: 0.06,
+        frictionAir: 0.028,
+        density: 0.012,
         label: 'ball',
       });
-      Matter.Body.setVelocity(ball, { x: (Math.random() - 0.5) * 0.8, y: 0.45 });
+      Matter.Body.setVelocity(ball, { x: (Math.random() - 0.5) * 0.45, y: 0.12 });
 
       ballBodyRef.current = ball;
       Matter.Composite.add(engineRef.current.world, ball);
@@ -359,7 +359,7 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
     }
   }, [phase, forcedWinner]);
 
-  // Steer the live ball gently toward the server-declared side while it falls
+  // Very gentle steer toward server-declared side — avoids sudden yank that looks “fast”
   useEffect(() => {
     if (!forcedWinner || !ballBodyRef.current || !engineRef.current) return;
     const width = canvasRef.current?.width || 360;
@@ -372,10 +372,10 @@ export const BallDropCanvas: React.FC<BallDropCanvasProps> = ({
       }
       const dx = targetX - ball.position.x;
       Matter.Body.setVelocity(ball, {
-        x: Math.max(-2, Math.min(2, ball.velocity.x + Math.sign(dx) * 0.045)),
+        x: Math.max(-1.6, Math.min(1.6, ball.velocity.x + Math.sign(dx) * 0.028)),
         y: ball.velocity.y,
       });
-    }, 70);
+    }, 85);
     return () => clearInterval(steer);
   }, [forcedWinner]);
 
